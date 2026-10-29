@@ -20,7 +20,7 @@
   <a href="#core-capabilities">Capabilities</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#quick-start">Quick Start</a> •
-  <a href="#security--governance">Security &amp; Governance</a> •
+  <a href="#security--governance">Security & Governance</a> •
   <a href="#contributing--open-source-community">Contributing</a> •
   <a href="#automated-test-suite">Tests (184/184)</a> •
   <a href="LICENSE">License</a>
@@ -327,37 +327,14 @@ nowpilot-servicenow/
 ├── NOTICE                         # Formal Apache notice file
 ├── SHA256SUMS                     # SHA-256 verification hashes for XML update sets
 ├── local_runner.js                # Zero-dependency local simulation server (port 3000)
-├── landing.html                   # Graphify-style responsive showcase landing page
+├── landing.html                   # Marketing / landing page
+├── index.html                     # Local simulator shell
+├── favicon.ico / favicon.svg
 ├── src/
-│   ├── assets/
-│   │   └── now_pilot_logo.png     # Official high-resolution transparent logo
-│   ├── global/
-│   │   ├── GMGAIApplier.js        # Global record applier facade
-│   │   ├── GMGAIApplierCore.js    # Global privileged mutation applier
-│   │   └── gmg_ai_agent_panel.js  # Global UI Script (UI16 & Next Experience launcher)
-│   ├── scoped/                    # Scoped application Script Includes (x_gmg_ai)
-│   │   ├── ActionService.js       # Proposal execution & record mutation handler
-│   │   ├── AgentCore.js           # Multi-turn execution coordinator & auditor
-│   │   ├── AgentTools.js          # Platform tool definitions & parameter bounds
-│   │   ├── Budget.js              # Token accounting & spend cap tracker
-│   │   ├── DevAssistant.js        # ServiceNow development assistant orchestrator
-│   │   ├── DevValidator.js        # Static AST validator & platform safety rules
-│   │   ├── DiagnosticService.js   # Centralized error classification & correlation IDs
-│   │   ├── GMGSeal.js             # HMAC SHA-256 proposal tampering protection
-│   │   ├── ITSMAssistant.js       # Grounded recommendation engine & summarizer
-│   │   ├── ITSMContextBuilder.js  # Citation tracker & prompt boundary sandboxing
-│   │   ├── ITSMRetriever.js       # Multi-factor similarity & active KB search
-│   │   ├── LLMAdapter.js          # Gateway client, SSRF guard & provider fallback
-│   │   ├── RecordTools.js         # Safe GlideRecordSecure access layer
-│   │   ├── WorkflowEngine.js      # State machine & tool execution coordinator
-│   │   ├── WorkflowPlanner.js     # Goal decomposition & step planner
-│   │   └── rest_health.js         # Health check and diagnostic REST resource
-│   └── test/                      # 184 automated verification tests
-│       ├── test_dev_assistant.js
-│       ├── test_itsm_intelligence.js
-│       ├── test_omniroute.js
-│       ├── test_production_readiness.js
-│       └── test_workflow_automation.js
+│   ├── assets/                    # Logos, favicons, mockup images
+│   ├── global/                    # Global UI Scripts (panel + applier)
+│   ├── scoped/                    # Scoped Script Includes (AgentCore, etc.)
+│   └── test/                      # 184 automated offline tests
 └── update_sets/
     ├── now_pilot_global.xml       # Global update set (UI script + applier)
     ├── now_pilot_scoped.xml       # Scoped application update set (330 updates)
@@ -367,7 +344,15 @@ nowpilot-servicenow/
 
 ---
 
-> **Disclaimer &amp; Attribution Notice:** **Now Pilot for ServiceNow** is an independent open-source project **developed and extended by Kanam Ramu**, based on the GMG AI Agent open-source foundation originally released by GMG Technology LLC under the Apache License 2.0. **GMG Technology LLC is not involved in the development, maintenance, sponsorship, or endorsement of Now Pilot.** ServiceNow, Now Platform, Next Experience, and Polaris are registered trademarks of ServiceNow, Inc. Anthropic and Claude are trademarks of Anthropic PBC. OpenAI is a trademark of OpenAI, Inc. This project has no commercial affiliation with ServiceNow, Inc. or GMG Technology LLC.
+## Acknowledgments
+
+Portions of this project's documentation, structure review, and ongoing development assistance were supported by **[Grok](https://x.ai)**, built by **xAI**.
+
+Grok is used as a collaborative AI coding and documentation partner. All final decisions, security reviews, and production merges remain under human control by the project maintainer.
+
+We appreciate transparent AI-assisted open-source development.
+
+> **Disclaimer & Attribution Notice:** **Now Pilot for ServiceNow** is an independent open-source project **developed and extended by Kanam Ramu**, based on the GMG AI Agent open-source foundation originally released by GMG Technology LLC under the Apache License 2.0. **GMG Technology LLC is not involved in the development, maintenance, sponsorship, or endorsement of Now Pilot.** ServiceNow, Now Platform, Next Experience, and Polaris are registered trademarks of ServiceNow, Inc. Anthropic and Claude are trademarks of Anthropic PBC. OpenAI is a trademark of OpenAI, Inc. This project has no commercial affiliation with ServiceNow, Inc. or GMG Technology LLC.
 
 ---
 
