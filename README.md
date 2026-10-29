@@ -97,9 +97,19 @@ node local_runner.js
 
 Click the **Now Pilot** launcher. Work a mock incident. Feel the approval flow.
 
-**Deploy to an instance?** → [INSTALL.md](INSTALL.md) (update sets + provider setup).
+### Deploy on a real ServiceNow instance
 
-**Gemini in one line:** type `openai_compatible`, base URL `https://generativelanguage.googleapis.com/v1beta/openai`, model `gemini-2.0-flash`, your AI Studio key.
+Follow the full guide (written for first-time update-set users):
+
+**→ [INSTALL.md](INSTALL.md)** — 11 clear steps:
+
+1. Import **global** XML → Preview → Commit  
+2. Import **scoped** XML → Preview → Commit  
+3. Assign role `x_gmg_ai.user` → log out / in  
+4. Add one AI provider (OpenAI, Claude, Gemini, OpenRouter…)  
+5. Open an Incident and click the launcher  
+
+**Gemini quick provider fields:** type `gemini` (or `openai_compatible`), model `gemini-2.0-flash`, key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 ---
 
