@@ -30,8 +30,8 @@ You will upload **two XML files**, in this order:
 
 | Order | File path on disk | Name after import |
 |:---:|---|---|
-| **1st** | `update_sets/gmg_ai_agent_global.xml` | Now Pilot open source (global) |
-| **2nd** | `update_sets/gmg_ai_agent_scoped.xml` | Now Pilot open source (scoped) |
+| **1st** | `update_sets/now_pilot_global.xml` | Now Pilot open source (global) |
+| **2nd** | `update_sets/now_pilot_scoped.xml` | Now Pilot open source (scoped) |
 
 > Optional integrity check: `sha256sum update_sets/*.xml` and compare with [SHA256SUMS](SHA256SUMS).
 
@@ -57,7 +57,7 @@ You will upload **two XML files**, in this order:
 3. Select:
 
    ```
-   update_sets/gmg_ai_agent_global.xml
+   update_sets/now_pilot_global.xml
    ```
 
 4. Click **Upload**.
@@ -98,7 +98,7 @@ Repeat the same flow with the **scoped** file.
 3. Choose:
 
    ```
-   update_sets/gmg_ai_agent_scoped.xml
+   update_sets/now_pilot_scoped.xml
    ```
 
 4. Click **Upload**.
