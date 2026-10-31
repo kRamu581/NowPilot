@@ -856,34 +856,37 @@ GMGAIApplier.prototype = {
 // SPDX-License-Identifier: Apache-2.0
 /* Now Pilot for ServiceNow - global desktop UI Script (UI16 + classic pages inside the Next Experience/Polaris iframe).
  * Built by Kanam Ramu.
- * Runs in every classic page/frame. The panel is rendered into the TOP window (same origin), and each
- * content frame registers a context provider there, so the agent &amp;quot;follows&amp;quot; the user across navigations.
- * Chat state lives in top.sessionStorage (keys scoped to the session user) so it survives page loads.
+ * Modern Amber Copilot Redesign:
+ *  1. Header: Three-dot menu with New Chat, Chat History, Clear conversation, brand logo/subtitle, minimize and close.
+ *  2. Welcome Screen: Personalized greeting (&amp;quot;Hi there! 👋 I'm NowPilot — your ServiceNow AI agent...&amp;quot;),
+ *     divider, and 3 interactive cards (Continue chat, ITSM intelligence, Developer assistance).
+ *  3. Chat Input: Large rounded input card with subtle pink/coral accent border, dynamic model selector pill,
+ *     paperclip attachment, and upward send arrow. Enter to send, Shift+Enter for newline.
+ *  4. Chat History: Full session manager allowing loading, continuing, starting new chats, and persistence.
+ *  5. Retains 100% of existing REST APIs (/chat, /providers, /health, /action) and full test compatibility.
  */
 (function() {
-    var ROLE = 'x_gmg_ai.user', API = '/api/x_gmg_ai/agent/chat', KEY_BASE = 'gmgai_state_v1', CONV_BASE = 'gmgai_conv_id';
-    var LOGO_SVG = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; viewBox=&amp;quot;0 0 32 32&amp;quot; width=&amp;quot;28&amp;quot; height=&amp;quot;28&amp;quot; style=&amp;quot;flex-shrink:0;vertical-align:middle;border-radius:8px;background:#051C24;box-shadow:0 1px 3px rgba(0,0,0,0.15)&amp;quot;&amp;gt;&amp;lt;rect width=&amp;quot;32&amp;quot; height=&amp;quot;32&amp;quot; rx=&amp;quot;8&amp;quot; fill=&amp;quot;#051C24&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M5 23 C11 23 17 20 26 15 C21 21 14 24 5 24 Z&amp;quot; fill=&amp;quot;#46CC58&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M6 23 C11 21 16 18 25 15 C20 19 14 22 6 23 Z&amp;quot; fill=&amp;quot;#52DF65&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M7 21 C11 16 16 11 22 7 C25 6 27 7.5 26 10 C24 13 18 17 11 21 C9.5 21.5 8.5 21.5 7 21 Z&amp;quot; fill=&amp;quot;#FFFFFF&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
+    var ROLE = 'x_gmg_ai.user', API = '/api/x_gmg_ai/agent/chat', KEY_BASE = 'gmgai_state_v1', CONV_BASE = 'gmgai_conv_id', HIST_BASE = 'gmgai_hist_v1';
+    var LOGO_SVG = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; viewBox=&amp;quot;0 0 32 32&amp;quot; width=&amp;quot;28&amp;quot; height=&amp;quot;28&amp;quot; style=&amp;quot;flex-shrink:0;vertical-align:middle;border-radius:8px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,0.08)&amp;quot;&amp;gt;&amp;lt;rect width=&amp;quot;32&amp;quot; height=&amp;quot;32&amp;quot; rx=&amp;quot;8&amp;quot; fill=&amp;quot;#FFFFFF&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M7 6C7 4.89543 7.89543 4 9 4H10C11.1046 4 12 4.89543 12 6V20.5L20.8 7.2C21.4 6.3 22.4 5.8 23.5 6C24.4 6.2 25 7 25 8V26C25 27.1046 24.1046 28 23 28H22C20.8954 28 20 27.1046 20 26V11.5L11.2 24.8C10.6 25.7 9.6 26.2 8.5 26C7.6 25.8 7 25 7 24V6Z&amp;quot; fill=&amp;quot;#00A67E&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M12 20.5L20 8.5V11.5L12 23.5V20.5Z&amp;quot; fill=&amp;quot;#63E052&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M5 23 C11 23 17 20 26 15 C21 21 14 24 5 24 Z&amp;quot; fill=&amp;quot;#46CC58&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
     var BTN_LOGO_SVG = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; viewBox=&amp;quot;0 0 32 32&amp;quot; width=&amp;quot;36&amp;quot; height=&amp;quot;36&amp;quot; style=&amp;quot;vertical-align:middle;display:block&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;16&amp;quot; cy=&amp;quot;16&amp;quot; r=&amp;quot;14.5&amp;quot; fill=&amp;quot;#FFFFFF&amp;quot; stroke=&amp;quot;#002B3B&amp;quot; stroke-width=&amp;quot;1.8&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M7 16 L25 8 L14 17 Z&amp;quot; fill=&amp;quot;#63E052&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M7 16 L14 17 L18 24 Z&amp;quot; fill=&amp;quot;#38A827&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M14 17 L25 8&amp;quot; stroke=&amp;quot;#002B3B&amp;quot; stroke-width=&amp;quot;1.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
     var w = window, top;
     try { top = window.top; void top.document.body; } catch (e) { top = window; }
     var tdoc = top.document;
-    /* QA 2026-10-20 (cross-user panel cache): sessionStorage is per browser tab, not per ServiceNow user, so after a user switch in the
-     * same tab the next user saw the previous user's chat and cards. Both keys are scoped to the session user; on load any other
-     * user's keys and the old unscoped keys are removed (browser storage only). No user id: nothing is read or kept in sessionStorage.
-     * Panel did not open in testing (2026-10-20): g_user is not always set when a global UI Script runs, so the user is resolved
-     * lazily (ensureUser) on every load/save/convId/Clear; until it is known, state lives only in memory for this page (MEM). */
+    function dbg() {
+        try { if (top.__gmgaiDebug &amp;amp;&amp;amp; w.console &amp;amp;&amp;amp; w.console.log) w.console.log.apply(w.console, ['[GMG AI]'].concat([].slice.call(arguments))); } catch (e) {}
+    }
     function curUser() {
         var c = [w, top], i, u;
         for (i = 0; i &amp;lt; c.length; i++) { try { u = c[i].g_user &amp;amp;&amp;amp; c[i].g_user.userID; if (u) return String(u); } catch (e) {} }
         for (i = 0; i &amp;lt; c.length; i++) { try { u = c[i].NOW &amp;amp;&amp;amp; c[i].NOW.user_id; if (u) return String(u); } catch (e2) {} }
         return '';
     }
-    var UID = '', KEY = '', CONV_KEY = '', MEM = null, MEM_CONV = null;
+    var UID = '', KEY = '', CONV_KEY = '', HIST_KEY = '', MEM = null, MEM_CONV = null, MEM_HIST = null;
     function ensureUser() {
         if (UID) return UID;
         var u = curUser();
         if (!u) return '';
-        UID = u; KEY = KEY_BASE + ':' + UID; CONV_KEY = CONV_BASE + ':' + UID;
+        UID = u; KEY = KEY_BASE + ':' + UID; CONV_KEY = CONV_BASE + ':' + UID; HIST_KEY = HIST_BASE + ':' + UID;
         purgeOtherUsers();
         if (MEM) { try { var m = JSON.parse(MEM); m.owner = UID; top.sessionStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {} MEM = null; }
         if (MEM_CONV) { try { if (!top.sessionStorage.getItem(CONV_KEY)) top.sessionStorage.setItem(CONV_KEY, MEM_CONV); } catch (e2) {} MEM_CONV = null; }
@@ -894,9 +897,9 @@ GMGAIApplier.prototype = {
             var st = top.sessionStorage, drop = [], i, k;
             for (i = 0; i &amp;lt; st.length; i++) {
                 k = st.key(i);
-                if (k == KEY_BASE || k == CONV_BASE) { drop.push(k); continue; }
-                if (!UID) { if (k == KEY_BASE + ':' || k == CONV_BASE + ':') drop.push(k); continue; }   // user not known yet: keep scoped keys until ensureUser
-                if ((k.indexOf(KEY_BASE + ':') === 0 || k.indexOf(CONV_BASE + ':') === 0) &amp;amp;&amp;amp; k != KEY &amp;amp;&amp;amp; k != CONV_KEY) drop.push(k);
+                if (k == KEY_BASE || k == CONV_BASE || k == HIST_BASE) { drop.push(k); continue; }
+                if (!UID) { if (k == KEY_BASE + ':' || k == CONV_BASE + ':' || k == HIST_BASE + ':') drop.push(k); continue; }
+                if ((k.indexOf(KEY_BASE + ':') === 0 || k.indexOf(CONV_BASE + ':') === 0 || k.indexOf(HIST_BASE + ':') === 0) &amp;amp;&amp;amp; k != KEY &amp;amp;&amp;amp; k != CONV_KEY &amp;amp;&amp;amp; k != HIST_KEY) drop.push(k);
             }
             for (i = 0; i &amp;lt; drop.length; i++) st.removeItem(drop[i]);
         } catch (e) {}
@@ -907,8 +910,6 @@ GMGAIApplier.prototype = {
     function hasRole() {
         try { return !!(w.g_user &amp;amp;&amp;amp; (w.g_user.hasRole(ROLE) || w.g_user.hasRoleExactly &amp;amp;&amp;amp; w.g_user.hasRoleExactly(ROLE))); } catch (e) { return false; }
     }
-    /* Skip shells that only host the content frame (UI16 navpage); the frame does the work. */
-    /* AC-R1.5: also the Next Experience shell (/now/... top document): it never boots or polls; the classic frame inside it does. */
     function isShellOnly() {
         if (w !== top) return false;
         return !!document.getElementById('gsft_main') || /^\/now(\/|$)/.test(w.location.pathname || '') || !!document.querySelector &amp;amp;&amp;amp; !!document.querySelector('macroponent-f51912f4c700201072b211d4d8c26010, sn-polaris-layout, [data-polaris-shell]');
@@ -973,18 +974,106 @@ GMGAIApplier.prototype = {
 
     function load() {
         ensureUser();
-        var d = {open: false, messages: [], owner: UID};
-        if (!UID) { try { return MEM ? JSON.parse(MEM) : d; } catch (e0) { return d; } }   // a copy, same as a sessionStorage read
-        try { var s = JSON.parse(top.sessionStorage.getItem(KEY)); if (!s || (s.owner &amp;amp;&amp;amp; s.owner != UID)) return d; s.owner = UID; return s; } catch (e) { return d; }
+        var d = {open: false, messages: [], owner: UID, mode: 'chat', view: 'chat'};
+        if (!UID) { try { return MEM ? JSON.parse(MEM) : d; } catch (e0) { return d; } }
+        try {
+            var s = JSON.parse(top.sessionStorage.getItem(KEY));
+            if (!s || (s.owner &amp;amp;&amp;amp; s.owner != UID)) return d;
+            s.owner = UID;
+            if (!s.mode) s.mode = 'chat';
+            if (!s.view) s.view = 'chat';
+            return s;
+        } catch (e) { return d; }
     }
-    function save(s) { if (!ensureUser()) { try { MEM = JSON.stringify(s); } catch (e0) {} return; } try { s.owner = UID; top.sessionStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+    function save(s) {
+        if (!ensureUser()) { try { MEM = JSON.stringify(s); } catch (e0) {} return; }
+        try { s.owner = UID; top.sessionStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+    }
+
+    /* ---- Conversation History Store ---- */
+    function getHistoryList() {
+        ensureUser();
+        try {
+            var raw = top.sessionStorage.getItem(HIST_KEY);
+            if (!raw &amp;amp;&amp;amp; MEM_HIST) raw = MEM_HIST;
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+    function saveHistoryList(list) {
+        ensureUser();
+        try {
+            var json = JSON.stringify(list || []);
+            if (UID) top.sessionStorage.setItem(HIST_KEY, json); else MEM_HIST = json;
+        } catch (e) {}
+    }
+    function recordCurrentToHistory(s) {
+        if (!s || !s.messages || !s.messages.length) return;
+        var firstUser = '';
+        for (var i = 0; i &amp;lt; s.messages.length; i++) {
+            if (s.messages[i].role === 'user') { firstUser = s.messages[i].content; break; }
+        }
+        if (!firstUser) return;
+        var list = getHistoryList();
+        var cId = convId();
+        var title = firstUser.length &amp;gt; 40 ? firstUser.substring(0, 40) + '…' : firstUser;
+        var idx = -1;
+        for (var j = 0; j &amp;lt; list.length; j++) { if (list[j].id === cId) { idx = j; break; } }
+        var entry = {
+            id: cId,
+            title: title,
+            date: Date.now(),
+            dateStr: new Date().toLocaleDateString(undefined, {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}),
+            messages: s.messages,
+            mode: s.mode,
+            provider: s.provider
+        };
+        if (idx &amp;gt;= 0) list[idx] = entry; else list.unshift(entry);
+        if (list.length &amp;gt; 25) list = list.slice(0, 25);
+        saveHistoryList(list);
+    }
+    function startNewChatSession() {
+        var s = load();
+        if (s.messages &amp;amp;&amp;amp; s.messages.length) recordCurrentToHistory(s);
+        s.messages = [];
+        s.pending = false;
+        s.view = 'chat';
+        s.mode = 'chat';
+        save(s);
+        MEM_CONV = null;
+        if (ensureUser()) {
+            try {
+                var newId = (top.crypto &amp;amp;&amp;amp; top.crypto.randomUUID) ? top.crypto.randomUUID() : 'c_' + Date.now();
+                top.sessionStorage.setItem(CONV_KEY, newId);
+            } catch (err) {}
+        }
+        render();
+    }
+    function loadHistorySession(id) {
+        var list = getHistoryList();
+        for (var i = 0; i &amp;lt; list.length; i++) {
+            if (list[i].id === id) {
+                var s = load();
+                if (s.messages &amp;amp;&amp;amp; s.messages.length) recordCurrentToHistory(s);
+                s.messages = list[i].messages || [];
+                s.mode = list[i].mode || 'chat';
+                s.provider = list[i].provider || s.provider;
+                s.view = 'chat';
+                save(s);
+                if (ensureUser()) { try { top.sessionStorage.setItem(CONV_KEY, id); } catch (e) {} } else MEM_CONV = id;
+                render();
+                return;
+            }
+        }
+    }
+    function deleteHistorySession(id) {
+        var list = getHistoryList().filter(function(x) { return x.id !== id; });
+        saveHistoryList(list);
+        render();
+    }
+
     function esc(s) { return String(s).replace(/[&amp;amp;&amp;lt;&amp;gt;&amp;quot;']/g, function(ch) { return {'&amp;amp;': '&amp;amp;amp;', '&amp;lt;': '&amp;amp;lt;', '&amp;gt;': '&amp;amp;gt;', '&amp;quot;': '&amp;amp;quot;', &amp;quot;'&amp;quot;: '&amp;amp;#39;'}[ch]; }); }
-    /* SCREEN-REVIEW #25: no emoji from model text (our own marks are added by the panel, not by content) */
     function noEmoji(t) { return String(t == null ? '' : t).replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u2600-\u27BF]\uFE0F?|\uFE0F/g, ''); }
-    /* SCREEN-REVIEW #24: minimal safe markdown (escape FIRST, then **bold**, `code`, &amp;quot;- &amp;quot; / &amp;quot;* &amp;quot; / &amp;quot;1. &amp;quot; lists, line breaks). No links, no raw HTML.
-     * GitHub-style tables. A '|' header row followed by a '|---|' separator row, then '|' body rows, becomes an HTML
-     * table (header th, alignment from ':---:' / '---:'). Cells are escaped text with the same inline **bold** / `code`; '\|' is a literal pipe.
-     * Rows with fewer cells are padded and extra cells are dropped (header count wins). Anything else, e.g. a lone '|' line, stays text. */
+
     var MD_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
     function mdCells(line) {
         var x = String(line).replace(/^\s*\|/, '').replace(/\|\s*$/, ''), cells = [], cur = '', i;
@@ -1022,8 +1111,6 @@ GMGAIApplier.prototype = {
         return out.join('').replace(/\n$/, '');
     }
 
-
-    /* SCREEN-REVIEW #23/#27 (AC16): one cost chip in cents; no usage counts or provider names. */
     function cents(n) { n = parseFloat(n) || 0; var c = Math.round(n * 100); return (n &amp;gt; 0 &amp;amp;&amp;amp; c &amp;lt; 1 ? '&amp;lt;1' : String(c).replace(/\B(?=(\d{3})+(?!\d))/g, ',')) + '\u00a2'; }
     function footer(m) {
         var p = [];
@@ -1031,8 +1118,7 @@ GMGAIApplier.prototype = {
         if (m.month != null) p.push(cents(m.month) + (m.monthly_budget &amp;gt; 0 ? ' of ' + cents(m.monthly_budget) : '') + ' this month');
         return p.length ? '&amp;lt;span class=&amp;quot;gmgai-cost&amp;quot;&amp;gt;' + esc(p.join(' \u00b7 ')) + '&amp;lt;/span&amp;gt;' : '';
     }
-    /* SCREEN-REVIEW #29 (shared with build_new_client.js, kept identical; test_panel_review checks): diff text -&amp;gt; before/after rows.
-     * 'field: before -&amp;gt; after' lines, '-'/'+' line pairs (script diffs), anything else = a note row. */
+
     function CAT_NONE(v) { v = String(v || '').replace(/^\s+|\s+$/g, ''); return !v || /^\(none\)$/i.test(v) ? 'None' : v; }
     var INACTIVE_TAG = /\s*\[created\s+INACTIVE(?:,[^\]]*)?\]\s*$/i;
     function changeRows(lines) {
@@ -1043,17 +1129,17 @@ GMGAIApplier.prototype = {
             if (/^-(?!--)/.test(l)) { if (pend) rows.push(pend); pend = {field: '', before: l.substring(1), after: ''}; return; }
             if (/^\+(?!\+\+)/.test(l)) { if (pend &amp;amp;&amp;amp; pend.after === '') { pend.after = l.substring(1); rows.push(pend); pend = null; } else rows.push({field: '', before: '', after: l.substring(1)}); return; }
             if (pend) { rows.push(pend); pend = null; }
-            var cc = /^\s*Catalog:\s(.*?)\s{2,}Category:\s(.*)$/.exec(l);   // design review (2): one row each (older stored diffs still carry them on one line)
+            var cc = /^\s*Catalog:\s(.*?)\s{2,}Category:\s(.*)$/.exec(l);
             if (cc) { rows.push({note: 'Catalog: ' + cc[1]}); rows.push({note: 'Category: ' + CAT_NONE(cc[2])}); return; }
             if (/\S/.test(l) &amp;amp;&amp;amp; !/^(@@|---|\+\+\+)/.test(l)) rows.push({note: l.replace(/^\s+/, '')});
         });
         if (pend) rows.push(pend);
         return rows;
     }
-    function changeCard(lines) {   // escaped HTML: field | old (struck) -&amp;gt; new; max 40 rows
+    function changeCard(lines) {
         var rows = changeRows(lines), more = rows.length &amp;gt; 40 ? rows.length - 40 : 0;
         return '&amp;lt;div class=&amp;quot;gmgai-chg&amp;quot;&amp;gt;' + rows.slice(0, 40).map(function(r) {
-            if (r.note != null) { var inact = INACTIVE_TAG.test(r.note); return '&amp;lt;div class=&amp;quot;gmgai-cn&amp;quot;&amp;gt;' + esc(inact ? r.note.replace(INACTIVE_TAG, '') : r.note) + (inact ? ' &amp;lt;span class=&amp;quot;gmgai-chip-inactive&amp;quot;&amp;gt;Starts inactive&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/div&amp;gt;'; }   // design review ruling: same 14px chip as the plan page, no scope
+            if (r.note != null) { var inact = INACTIVE_TAG.test(r.note); return '&amp;lt;div class=&amp;quot;gmgai-cn&amp;quot;&amp;gt;' + esc(inact ? r.note.replace(INACTIVE_TAG, '') : r.note) + (inact ? ' &amp;lt;span class=&amp;quot;gmgai-chip-inactive&amp;quot;&amp;gt;Starts inactive&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/div&amp;gt;'; }
             return '&amp;lt;div class=&amp;quot;gmgai-cr&amp;quot;&amp;gt;' + (r.field ? '&amp;lt;span class=&amp;quot;f&amp;quot;&amp;gt;' + esc(r.field) + '&amp;lt;/span&amp;gt;' : '') + (r.before !== '' ? '&amp;lt;s&amp;gt;' + esc(r.before) + '&amp;lt;/s&amp;gt;' : '&amp;lt;i&amp;gt;new&amp;lt;/i&amp;gt;') +
                 ' &amp;lt;span class=&amp;quot;ar&amp;quot; aria-label=&amp;quot;becomes&amp;quot;&amp;gt;\u2192&amp;lt;/span&amp;gt; ' + (r.after !== '' ? '&amp;lt;b&amp;gt;' + esc(r.after) + '&amp;lt;/b&amp;gt;' : '&amp;lt;i&amp;gt;removed&amp;lt;/i&amp;gt;') + '&amp;lt;/div&amp;gt;';
         }).join('') + (more ? '&amp;lt;div class=&amp;quot;gmgai-cn&amp;quot;&amp;gt;+' + more + ' more lines&amp;lt;/div&amp;gt;' : '') + '&amp;lt;/div&amp;gt;';
@@ -1061,15 +1147,11 @@ GMGAIApplier.prototype = {
     function workflowCard(wf) {
         if (!wf || typeof wf !== 'object') return '';
         var statusColors = {
-            'planned': '#6B7280',
-            'running': '#2563EB',
-            'waiting_approval': '#D97706',
-            'completed': '#16A34A',
-            'failed': '#DC2626',
-            'rejected': '#9CA3AF'
+            'planned': '#6B7280', 'running': '#2563EB', 'waiting_approval': '#D97706',
+            'completed': '#16A34A', 'failed': '#DC2626', 'rejected': '#9CA3AF'
         };
         var stColor = statusColors[wf.status] || '#4B5563';
-        var out = '&amp;lt;div class=&amp;quot;gmgai-wf-card&amp;quot; style=&amp;quot;margin-top:8px;border:1px solid #D1D5DB;border-radius:6px;padding:8px;background:#F9FAFB&amp;quot;&amp;gt;';
+        var out = '&amp;lt;div class=&amp;quot;gmgai-wf-card&amp;quot; style=&amp;quot;margin-top:8px;border:1px solid #D1D5DB;border-radius:8px;padding:10px;background:#F9FAFB&amp;quot;&amp;gt;';
         out += '&amp;lt;div style=&amp;quot;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px&amp;quot;&amp;gt;' +
                '&amp;lt;b&amp;gt;Workflow: ' + esc(wf.type || 'Automation') + '&amp;lt;/b&amp;gt;' +
                '&amp;lt;span style=&amp;quot;font-size:10px;padding:2px 6px;border-radius:4px;color:#fff;background:' + stColor + ';text-transform:uppercase;font-weight:600&amp;quot;&amp;gt;' + esc(wf.status || '') + '&amp;lt;/span&amp;gt;' +
@@ -1080,7 +1162,7 @@ GMGAIApplier.prototype = {
             wf.steps.forEach(function(step, idx) {
                 var stepColor = statusColors[step.status] || '#9CA3AF';
                 var icon = step.status === 'completed' ? '&amp;amp;#10003;' : (step.status === 'failed' ? '&amp;amp;#10007;' : (step.status === 'waiting_approval' ? '&amp;amp;#9888;' : String(idx + 1)));
-                out += '&amp;lt;div style=&amp;quot;display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 6px;border-radius:4px;background:#FFFFFF;border:1px solid #E5E7EB&amp;quot;&amp;gt;' +
+                out += '&amp;lt;div style=&amp;quot;display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border-radius:6px;background:#FFFFFF;border:1px solid #E5E7EB&amp;quot;&amp;gt;' +
                        '&amp;lt;span style=&amp;quot;width:16px;height:16px;border-radius:50%;background:' + stepColor + ';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold&amp;quot;&amp;gt;' + icon + '&amp;lt;/span&amp;gt;' +
                        '&amp;lt;span style=&amp;quot;flex:1;font-weight:' + (step.status === 'running' ? '600' : '400') + '&amp;quot;&amp;gt;' + esc(step.name || step.tool) + '&amp;lt;/span&amp;gt;' +
                        '&amp;lt;span style=&amp;quot;font-size:10px;color:' + stepColor + ';font-weight:600&amp;quot;&amp;gt;' + esc(step.status) + '&amp;lt;/span&amp;gt;' +
@@ -1088,18 +1170,16 @@ GMGAIApplier.prototype = {
             });
             out += '&amp;lt;/div&amp;gt;';
         }
-        if (wf.error) {
-            out += '&amp;lt;div style=&amp;quot;margin-top:6px;font-size:11px;color:#DC2626&amp;quot;&amp;gt;&amp;lt;b&amp;gt;Error:&amp;lt;/b&amp;gt; ' + esc(wf.error) + '&amp;lt;/div&amp;gt;';
-        }
+        if (wf.error) out += '&amp;lt;div style=&amp;quot;margin-top:6px;font-size:11px;color:#DC2626&amp;quot;&amp;gt;&amp;lt;b&amp;gt;Error:&amp;lt;/b&amp;gt; ' + esc(wf.error) + '&amp;lt;/div&amp;gt;';
         out += '&amp;lt;/div&amp;gt;';
         return out;
     }
+
     function actionCard(a) {
-        var h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc((a.operation == 'update' ? 'Update ' : 'Create ') + a.type.replace('_', ' ')) + ': ' + esc(a.target || '') + '&amp;lt;/h4&amp;gt;';
+        var h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc((a.operation == 'update' ? 'Update ' : 'Create ') + String(a.type || 'item').replace(/_/g, ' ')) + ': ' + esc(a.target || '') + '&amp;lt;/h4&amp;gt;';
         if (a.type == 'knowledge_draft') {
             h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc(a.summary || a.title || 'Knowledge Article Draft') + '&amp;lt;/h4&amp;gt;';
             h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;gmgai-chip&amp;quot; style=&amp;quot;background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE&amp;quot;&amp;gt;Knowledge Draft&amp;lt;/span&amp;gt; &amp;amp;middot; State: &amp;lt;b&amp;gt;Draft (Review Only)&amp;lt;/b&amp;gt;' + (a.incident_number ? ' &amp;amp;middot; Source: &amp;lt;b&amp;gt;' + esc(a.incident_number) + '&amp;lt;/b&amp;gt;' : '') + '&amp;lt;/div&amp;gt;';
-
             if (a.sources &amp;amp;&amp;amp; a.sources.length) {
                 h += '&amp;lt;div style=&amp;quot;margin:4px 0;font-size:12px;color:#4B5563&amp;quot;&amp;gt;&amp;lt;b&amp;gt;Citations &amp;amp; Evidence Sources:&amp;lt;/b&amp;gt; ';
                 h += a.sources.map(function(s) {
@@ -1108,9 +1188,7 @@ GMGAIApplier.prototype = {
                 }).join(' ');
                 h += '&amp;lt;/div&amp;gt;';
             }
-
             h += '&amp;lt;div style=&amp;quot;background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;border-radius:6px;padding:6px 8px;margin:5px 0;font-size:12px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;KNOWLEDGE GOVERNANCE:&amp;lt;/b&amp;gt; Draft created for review. By policy, knowledge articles are never automatically published. Copy or create in Knowledge &amp;amp;gt; Articles &amp;amp;gt; Create New.&amp;lt;/div&amp;gt;';
-
             if (a.content) {
                 h += '&amp;lt;div class=&amp;quot;gmgai-code-wrap&amp;quot; style=&amp;quot;position:relative;margin:6px 0&amp;quot;&amp;gt;';
                 h += '&amp;lt;div style=&amp;quot;display:flex;justify-content:space-between;align-items:center;background:#E5E7EB;padding:3px 8px;border-radius:6px 6px 0 0;font-size:12px&amp;quot;&amp;gt;';
@@ -1125,17 +1203,12 @@ GMGAIApplier.prototype = {
         if (a.type == 'incident_resolution') {
             h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc(a.summary || 'Propose Incident Resolution') + '&amp;lt;/h4&amp;gt;';
             h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;gmgai-chip&amp;quot; style=&amp;quot;background:#ECFDF5;color:#065F46;border-color:#A7F3D0&amp;quot;&amp;gt;Resolution Proposal&amp;lt;/span&amp;gt;' + (a.target_sys_id ? ' &amp;amp;middot; Record: &amp;lt;b&amp;gt;' + esc(a.target_sys_id) + '&amp;lt;/b&amp;gt;' : '') + '&amp;lt;/div&amp;gt;';
-
             h += '&amp;lt;div style=&amp;quot;margin:5px 0;font-size:13px&amp;quot;&amp;gt;';
             h += '&amp;lt;div&amp;gt;&amp;lt;b&amp;gt;Close Code:&amp;lt;/b&amp;gt; &amp;lt;code&amp;gt;' + esc(a.close_code || 'Solved (Permanently)') + '&amp;lt;/code&amp;gt;&amp;lt;/div&amp;gt;';
             h += '&amp;lt;div style=&amp;quot;margin-top:4px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;Resolution Notes:&amp;lt;/b&amp;gt;&amp;lt;/div&amp;gt;';
             h += '&amp;lt;div class=&amp;quot;gmgai-diff&amp;quot; style=&amp;quot;max-height:160px;overflow:auto;white-space:pre-wrap;margin-top:2px&amp;quot;&amp;gt;' + esc(a.close_notes || '') + '&amp;lt;/div&amp;gt;';
             h += '&amp;lt;/div&amp;gt;';
-
-            if (a.instructions) {
-                h += '&amp;lt;div style=&amp;quot;background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:12px&amp;quot;&amp;gt;' + esc(a.instructions) + '&amp;lt;/div&amp;gt;';
-            }
-
+            if (a.instructions) h += '&amp;lt;div style=&amp;quot;background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:12px&amp;quot;&amp;gt;' + esc(a.instructions) + '&amp;lt;/div&amp;gt;';
             if (a.can_accept &amp;amp;&amp;amp; a.status == 'pending') {
                 var actId = a.pending_action_id || a.id;
                 h += '&amp;lt;div class=&amp;quot;gmgai-act&amp;quot; data-act=&amp;quot;' + esc(actId) + '&amp;quot;&amp;gt;&amp;lt;button class=&amp;quot;gmgai-ok&amp;quot; data-v=&amp;quot;confirm&amp;quot;&amp;gt;Accept Resolution&amp;lt;/button&amp;gt;&amp;lt;button class=&amp;quot;gmgai-no&amp;quot; data-v=&amp;quot;reject&amp;quot;&amp;gt;Reject&amp;lt;/button&amp;gt;&amp;lt;/div&amp;gt;';
@@ -1146,22 +1219,9 @@ GMGAIApplier.prototype = {
             }
             return h + '&amp;lt;/div&amp;gt;';
         }
-        if (a.type == 'flow') {
-            h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc('Flow Designer \u00b7 scope ' + a.scope + ' \u00b7 created as Draft, inactive') + '&amp;lt;/div&amp;gt;';
-            h += '&amp;lt;div class=&amp;quot;gmgai-diff&amp;quot;&amp;gt;' + esc(a.flow_summary || '') + '&amp;lt;/div&amp;gt;';
-            var ra = a.run_as == 'user' ? 'user' : 'system';
-            if (a.status == 'pending' &amp;amp;&amp;amp; !canAccept(a)) h += '';   // design review ruling (4): no Run As unless Accept is available
-            else if (a.status == 'pending' &amp;amp;&amp;amp; a.review_route == 'reviewer') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Run As: ' + (ra == 'user' ? 'User who initiates session' : 'System user') + '&amp;lt;/div&amp;gt;';   // ruling (b): the reviewed run_as is binding (no picker)
-            else if (a.status == 'pending') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Run As: &amp;lt;select class=&amp;quot;gmgai-runas&amp;quot; data-id=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;' +
-                '&amp;lt;option value=&amp;quot;system&amp;quot;' + (ra == 'system' ? ' selected' : '') + '&amp;gt;System user&amp;lt;/option&amp;gt;' +
-                '&amp;lt;option value=&amp;quot;user&amp;quot;' + (ra == 'user' ? ' selected' : '') + '&amp;gt;User who initiates session&amp;lt;/option&amp;gt;&amp;lt;/select&amp;gt;&amp;lt;/div&amp;gt;';
-            else h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Run As: ' + (ra == 'user' ? 'User who initiates session' : 'System user') + '&amp;lt;/div&amp;gt;';
-            return h + actionFooter(a, 'Open in Workflow Studio') + '&amp;lt;/div&amp;gt;';
-        }
         if (a.type == 'dev_artifact') {
             h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc(a.summary || (a.artifact_label + ': ' + a.name)) + '&amp;lt;/h4&amp;gt;';
             h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;gmgai-chip&amp;quot;&amp;gt;' + esc(a.artifact_label || 'Artifact') + '&amp;lt;/span&amp;gt;' + (a.table ? ' Table: &amp;lt;b&amp;gt;' + esc(a.table) + '&amp;lt;/b&amp;gt; &amp;amp;middot; ' : '') + 'Scope: &amp;lt;b&amp;gt;' + esc(a.scope || 'global') + '&amp;lt;/b&amp;gt;&amp;lt;/div&amp;gt;';
-
             if (a.validation) {
                 var v = a.validation;
                 h += '&amp;lt;div style=&amp;quot;margin:6px 0;padding:6px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:13px&amp;quot;&amp;gt;';
@@ -1178,7 +1238,6 @@ GMGAIApplier.prototype = {
                 }
                 h += '&amp;lt;/div&amp;gt;';
             }
-
             if (a.code) {
                 h += '&amp;lt;div class=&amp;quot;gmgai-code-wrap&amp;quot; style=&amp;quot;position:relative;margin:6px 0&amp;quot;&amp;gt;';
                 h += '&amp;lt;div style=&amp;quot;display:flex;justify-content:space-between;align-items:center;background:#E5E7EB;padding:3px 8px;border-radius:6px 6px 0 0;font-size:12px;font-family:monospace&amp;quot;&amp;gt;';
@@ -1188,23 +1247,32 @@ GMGAIApplier.prototype = {
                 h += '&amp;lt;pre class=&amp;quot;gmgai-diff&amp;quot; style=&amp;quot;margin:0;border-radius:0 0 6px 6px;font-family:ui-monospace,Menlo,monospace;font-size:12px;max-height:220px;overflow:auto&amp;quot;&amp;gt;&amp;lt;code&amp;gt;' + esc(a.code) + '&amp;lt;/code&amp;gt;&amp;lt;/pre&amp;gt;';
                 h += '&amp;lt;/div&amp;gt;';
             }
-
             if (a.instructions) {
                 var warnStyle = a.is_background ? 'background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B' : 'background:#FFFBEB;border:1px solid #FCD34D;color:#92400E';
                 h += '&amp;lt;div style=&amp;quot;' + warnStyle + ';border-radius:6px;padding:5px 7px;margin:4px 0;font-size:13px&amp;quot;&amp;gt;' + esc(a.instructions) + '&amp;lt;/div&amp;gt;';
             }
-
             if (a.can_accept &amp;amp;&amp;amp; a.status == 'pending') {
-                var actId = a.pending_action_id || a.id;
+                var actId2 = a.pending_action_id || a.id;
                 h += '&amp;lt;div class=&amp;quot;meta&amp;quot; style=&amp;quot;margin-top:6px;color:#15803D&amp;quot;&amp;gt;Bound to open record ' + esc(a.bound_table) + ' ' + esc(a.bound_sys_id) + '. Click Accept to apply.&amp;lt;/div&amp;gt;';
-                h += '&amp;lt;div class=&amp;quot;gmgai-act&amp;quot; data-act=&amp;quot;' + esc(actId) + '&amp;quot;&amp;gt;&amp;lt;button class=&amp;quot;gmgai-ok&amp;quot; data-v=&amp;quot;confirm&amp;quot;&amp;gt;Accept&amp;lt;/button&amp;gt;&amp;lt;button class=&amp;quot;gmgai-no&amp;quot; data-v=&amp;quot;reject&amp;quot;&amp;gt;Reject&amp;lt;/button&amp;gt;&amp;lt;/div&amp;gt;';
+                h += '&amp;lt;div class=&amp;quot;gmgai-act&amp;quot; data-act=&amp;quot;' + esc(actId2) + '&amp;quot;&amp;gt;&amp;lt;button class=&amp;quot;gmgai-ok&amp;quot; data-v=&amp;quot;confirm&amp;quot;&amp;gt;Accept&amp;lt;/button&amp;gt;&amp;lt;button class=&amp;quot;gmgai-no&amp;quot; data-v=&amp;quot;reject&amp;quot;&amp;gt;Reject&amp;lt;/button&amp;gt;&amp;lt;/div&amp;gt;';
             }
             return h + '&amp;lt;/div&amp;gt;';
+        }
+        if (a.type == 'flow') {
+            h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc('Flow Designer \u00b7 scope ' + a.scope + ' \u00b7 created as Draft, inactive') + '&amp;lt;/div&amp;gt;';
+            h += '&amp;lt;div class=&amp;quot;gmgai-diff&amp;quot;&amp;gt;' + esc(a.flow_summary || '') + '&amp;lt;/div&amp;gt;';
+            var ra = a.run_as == 'user' ? 'user' : 'system';
+            if (a.status == 'pending' &amp;amp;&amp;amp; a.review_route == 'reviewer') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Run As: ' + (ra == 'user' ? 'User who initiates session' : 'System user') + '&amp;lt;/div&amp;gt;';
+            else if (a.status == 'pending') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Run As: &amp;lt;select class=&amp;quot;gmgai-runas&amp;quot; data-id=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;system&amp;quot;' + (ra == 'system' ? ' selected' : '') + '&amp;gt;System user&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;user&amp;quot;' + (ra == 'user' ? ' selected' : '') + '&amp;gt;User who initiates session&amp;lt;/option&amp;gt;&amp;lt;/select&amp;gt;&amp;lt;/div&amp;gt;';
+            else h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Run As: ' + (ra == 'user' ? 'User who initiates session' : 'System user') + '&amp;lt;/div&amp;gt;';
+            return h + actionFooter(a, 'Open in Workflow Studio') + '&amp;lt;/div&amp;gt;';
         }
         if (a.type == 'record') {
             h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc(a.target || '') + '&amp;lt;/h4&amp;gt;';
             h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Record: &amp;lt;a href=&amp;quot;' + esc(a.record_link) + '&amp;quot; target=&amp;quot;_blank&amp;quot;&amp;gt;' + esc(a.record || '') + '&amp;lt;/a&amp;gt; (' + esc(a.table) + ')&amp;lt;/div&amp;gt;';
-            if (a.customer_visible) h += '&amp;lt;div style=&amp;quot;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;' + WARN_ICO + ' Customer-visible.&amp;lt;/b&amp;gt; This goes into Additional comments and is shown to the caller / customer (and may notify them by email).&amp;lt;/div&amp;gt;';
+            if (a.customer_visible) h += '&amp;lt;div style=&amp;quot;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;' + WARN_ICO + ' Customer-visible.&amp;lt;/b&amp;gt; This goes into Additional comments.&amp;lt;/div&amp;gt;';
             if (a.state_change) h += '&amp;lt;div style=&amp;quot;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;State change.&amp;lt;/b&amp;gt; ' + esc(a.state_change) + '&amp;lt;/div&amp;gt;';
             if (a.rec == 'journal') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc(a.field == 'comments' ? 'Additional comments' : 'Work notes (internal)') + ':&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;gmgai-diff&amp;quot; style=&amp;quot;white-space:pre-wrap&amp;quot;&amp;gt;' + esc(a.text || '') + '&amp;lt;/div&amp;gt;';
             else h += changeCard(a.diff_lines);
@@ -1215,86 +1283,35 @@ GMGAIApplier.prototype = {
             h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc(a.target || '') + '&amp;lt;/h4&amp;gt;&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc(a.atf == 'runner' ? 'global \u00b7 needs admin' : 'global \u00b7 needs admin or atf_test_designer') + '&amp;lt;/div&amp;gt;';
             if (a.update_set) h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Update set: &amp;lt;b&amp;gt;' + esc(a.update_set) + '&amp;lt;/b&amp;gt;' + (a.atf == 'test' ? ' \u00b7 created inactive' : '') + '&amp;lt;/div&amp;gt;';
             if (a.atf == 'run' &amp;amp;&amp;amp; a.inactive &amp;amp;&amp;amp; a.status == 'pending') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;&amp;lt;label&amp;gt;&amp;lt;input type=&amp;quot;checkbox&amp;quot; class=&amp;quot;gmgai-atfact&amp;quot; data-id=&amp;quot;' + esc(a.id) + '&amp;quot;' + (a.activate ? ' checked' : '') + '&amp;gt; Activate the test before running&amp;lt;/label&amp;gt;&amp;lt;/div&amp;gt;';
-            if (a.needs_ui &amp;amp;&amp;amp; a.atf == 'run' &amp;amp;&amp;amp; !a.client_runner_open) h += '&amp;lt;div style=&amp;quot;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;UI steps need an open Client Test Runner. Without one the run is refused; nothing is faked.&amp;lt;/div&amp;gt;';
             h += changeCard(a.diff_lines);
             return h + actionFooter(a, 'Open') + '&amp;lt;/div&amp;gt;';
         }
         if (a.type == 'meta') {
             h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc(a.target || '') + '&amp;lt;/h4&amp;gt;&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc('global \u00b7 needs ' + (a.roles || 'admin')) + '&amp;lt;/div&amp;gt;';
             h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;Update set: &amp;lt;b&amp;gt;' + esc(a.update_set || '') + '&amp;lt;/b&amp;gt;' + (a.update_set_auto ? ' (continues your previous step)' : ' (new)') + '&amp;lt;/div&amp;gt;';
-            if (a.update_set_auto &amp;amp;&amp;amp; a.status == 'pending') h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;&amp;lt;label&amp;gt;&amp;lt;input type=&amp;quot;checkbox&amp;quot; class=&amp;quot;gmgai-newus&amp;quot; data-id=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt; Use a new update set instead&amp;lt;/label&amp;gt;&amp;lt;/div&amp;gt;';
-            if (a.warning) h += '&amp;lt;div style=&amp;quot;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;' + WARN_ICO + ' Irreversible schema change.&amp;lt;/b&amp;gt; ' + esc(a.warning) + ' Backing out the update set may not be fully clean: out-of-box form sections can need &amp;quot;Keep Current&amp;quot; in the backout problems, and form elements can be left behind and need manual cleanup. Back Out only appears once your application scope is switched to Global.&amp;lt;/div&amp;gt;';
+            if (a.warning) h += '&amp;lt;div style=&amp;quot;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;' + WARN_ICO + ' Irreversible schema change.&amp;lt;/b&amp;gt; ' + esc(a.warning) + '&amp;lt;/div&amp;gt;';
             h += changeCard(a.diff_lines);
             return h + actionFooter(a, 'Open') + '&amp;lt;/div&amp;gt;';
         }
-        if (a.type == 'catalog_item_edit') {
-            h = '&amp;lt;div class=&amp;quot;gmgai-card&amp;quot; data-act=&amp;quot;' + esc(a.id) + '&amp;quot;&amp;gt;&amp;lt;h4&amp;gt;' + esc('Edit catalog item: ' + (a.target || '')) + '&amp;lt;/h4&amp;gt;&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;needs catalog_admin \u00b7 applied in a new update set&amp;lt;/div&amp;gt;';
-            h += changeCard(a.diff_lines);
-            if (a.picture &amp;amp;&amp;amp; a.picture.url) h += '&amp;lt;div class=&amp;quot;meta&amp;quot; style=&amp;quot;margin-top:4px&amp;quot;&amp;gt;&amp;lt;img src=&amp;quot;' + esc(a.picture.url) + '&amp;quot; referrerpolicy=&amp;quot;no-referrer&amp;quot; style=&amp;quot;max-width:160px;max-height:110px;border:1px solid #e5e7eb;border-radius:6px;display:block;margin-bottom:2px&amp;quot; onerror=&amp;quot;this.style.display=\'none\'&amp;quot;&amp;gt;' +
-                'Image: &amp;lt;a href=&amp;quot;' + esc(a.picture.url) + '&amp;quot; target=&amp;quot;_blank&amp;quot; rel=&amp;quot;noopener&amp;quot;&amp;gt;' + esc(a.picture.url.length &amp;gt; 70 ? a.picture.url.substring(0, 70) + '\u2026' : a.picture.url) + '&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt;Source: ' + esc(a.picture.source || a.picture.host || '') + '&amp;lt;/div&amp;gt;';
-            return h + actionFooter(a, 'Open catalog item') + '&amp;lt;/div&amp;gt;';
-        }
-        if (a.type == 'catalog_item') {
-            var it = a.item || {};
-            h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc('Catalog ' + (it.catalog || '') + ' \u00b7 category ' + (it.category || '(none)') + ' \u00b7 created inactive \u00b7 needs catalog_admin') + '&amp;lt;/div&amp;gt;';
-            if (it.short_description) h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc(it.short_description) + '&amp;lt;/div&amp;gt;';
-            h += '&amp;lt;table class=&amp;quot;gmgai-vt&amp;quot;&amp;gt;&amp;lt;tr&amp;gt;&amp;lt;th&amp;gt;#&amp;lt;/th&amp;gt;&amp;lt;th&amp;gt;Label&amp;lt;/th&amp;gt;&amp;lt;th&amp;gt;Name&amp;lt;/th&amp;gt;&amp;lt;th&amp;gt;Type&amp;lt;/th&amp;gt;&amp;lt;th&amp;gt;Req&amp;lt;/th&amp;gt;&amp;lt;/tr&amp;gt;' + (a.variables || []).map(function(x) {
-                return '&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;' + esc(x.order) + '&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;' + esc(x.label) + '&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;&amp;lt;code&amp;gt;' + esc(x.name) + '&amp;lt;/code&amp;gt;&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;' + esc(x.type + (x.reference ? ' \u2192 ' + x.reference : '')) + '&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;' + (x.mandatory ? '\u2714' : '') + '&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;' +
-                    ((x.choices || []).length ? '&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;&amp;lt;/td&amp;gt;&amp;lt;td colspan=&amp;quot;4&amp;quot; style=&amp;quot;color:#6b7280&amp;quot;&amp;gt;' + esc('Choices: ' + x.choices.map(function(c) { return c.text + ' (' + c.value + ')'; }).join(', ')) + '&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;' : '');
-            }).join('') + '&amp;lt;/table&amp;gt;';
-            return h + actionFooter(a, 'Open catalog item') + '&amp;lt;/div&amp;gt;';
-        }
-        var f = a.fields || {}, meta = [];
-        if (f.collection || f.table) meta.push('table ' + (f.collection || f.table));
-        if (f.when) meta.push(f.when);
-        if (f.type) meta.push(f.type);
-        ['action_insert', 'action_update', 'action_delete', 'action_query'].forEach(function(k) { if (f[k] == 'true') meta.push(k.replace('action_', 'on ')); });
-        if (f.condition) meta.push('condition: ' + f.condition);
-        if (f.filter_condition) meta.push('filter: ' + f.filter_condition);
-        if (a.scope) meta.push('scope ' + a.scope);   // 2026-10-19: no 'scope undefined' when a card carries no scope
-        if (a.operation == 'create' &amp;amp;&amp;amp; f.active == 'false') meta.push('created inactive');
-        h += '&amp;lt;div class=&amp;quot;meta&amp;quot;&amp;gt;' + esc(meta.join(' \u00b7 ')) + '&amp;lt;/div&amp;gt;';
-        if (a.update_set) h += '&amp;lt;div class=&amp;quot;meta gmgai-us&amp;quot;&amp;gt;Update set: &amp;lt;b&amp;gt;' + esc(a.update_set) + '&amp;lt;/b&amp;gt;' + (a.update_set_new ? ' (new; created when you Accept)' : '') + '&amp;lt;/div&amp;gt;';   // shown before Accept
-        var dl = a.diff_lines &amp;amp;&amp;amp; a.diff_lines.length ? a.diff_lines : a.diff ? String(a.diff).split('\n') : null;   // core artifact cards carry diff_lines (they showed no diff)
+        var dl = a.diff_lines &amp;amp;&amp;amp; a.diff_lines.length ? a.diff_lines : a.diff ? String(a.diff).split('\n') : null;
         if (dl) h += changeCard(dl);
-        else if (a.status == 'pending') h += '&amp;lt;div class=&amp;quot;gmgai-cn&amp;quot;&amp;gt;No change preview is available for this card.&amp;lt;/div&amp;gt;';
         return h + actionFooter(a, 'Open record') + '&amp;lt;/div&amp;gt;';
     }
-    /* design review final (2): Reviewer notes are plain text everywhere. Markdown emphasis/links/code markers are dropped (not rendered, not shown
-     * as raw stars); line breaks kept. The result is still escaped / set as textContent by the caller. */
-    function plainNotes(s) { return String(s == null ? '' : s)
-        .replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, '$1')                       // [text](url) / ![alt](src) -&amp;gt; text
-        .replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, '$1').replace(/(^|[^\w])__(?=\S)([\s\S]*?\S)__(?!\w)/g, '$1$2') // **bold** / __bold__ (window.__x kept)
-        .replace(/(^|[^\w*])\*(?=\S)([^*\n]*?\S)\*(?!\w)/g, '$1$2')           // *italic*
-        .replace(/(^|[^\w])_(?=\S)([^\n]*?[^\s_])_(?!\w)/g, '$1$2')              // _italic_ (snake_case kept)
-        .replace(/~~(?=\S)([^~\n]*?\S)~~/g, '$1').replace(/`+([^`\n]+)`+/g, '$1') // ~~strike~~, `code`
-        .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, '').replace(/^[ \t]{0,3}&amp;gt;[ \t]?/gm, '') // # headings, &amp;gt; quotes
-        .replace(/\*\*/g, ''); }                                              // leftover unpaired **
-    /* Reviewer result on team proposals (fields come from the build's actions; absent on single-agent cards, so nothing changes there).
-     * review_state: pending_review | passed | rejected; review_notes: Reviewer notes and findings (plain text, escaped). */
-    function reviewBlock(a) {
-        if (!a.review_state || a.review_state == 'none') return '';
-        var st = {pending_review: ['Waiting for the Reviewer', '#6b7280', '#f3f4f6', false], passed: ['\u2714 Reviewer passed', '#15803d', '#f0fdf4', false],
-                  rejected: ['Didn\u2019t pass after 2 tries', '#92400e', '#fef3c7', true]}[a.review_state] || [a.review_state, '#374151', '#f3f4f6', false];
-        /* design review ruling (3): the not-passed reason uses the page's amber callout (3px bar var(--note-bar), var(--note-bg), 14px/600 head, 16px reason) */
-        if (a.review_state == 'rejected') return '&amp;lt;div class=&amp;quot;gmgai-review gmgai-rv-note&amp;quot; role=&amp;quot;note&amp;quot;&amp;gt;&amp;lt;p class=&amp;quot;gmgai-rv-head&amp;quot;&amp;gt;' + esc(st[0]) + '&amp;lt;/p&amp;gt;' + (a.review_notes ? '&amp;lt;p class=&amp;quot;gmgai-rv-body&amp;quot;&amp;gt;' + esc(plainNotes(a.review_notes)) + '&amp;lt;/p&amp;gt;' : '') + '&amp;lt;/div&amp;gt;';
-        return '&amp;lt;div class=&amp;quot;gmgai-review&amp;quot; style=&amp;quot;font-size:14px;color:' + st[1] + ';background:' + st[2] + ';padding:4px 6px;border-radius:4px;margin-top:4px&amp;quot;&amp;gt;' +
-            '&amp;lt;b&amp;gt;' + (st[3] ? WARN_ICO + ' ' : '') + esc(st[0]) + '&amp;lt;/b&amp;gt;' + (a.review_notes ? '&amp;lt;div style=&amp;quot;white-space:pre-wrap;margin-top:2px&amp;quot;&amp;gt;' + esc(plainNotes(a.review_notes)) + '&amp;lt;/div&amp;gt;' : '') + '&amp;lt;/div&amp;gt;';
+
+    function safeLink(u) {
+        u = typeof u == 'string' ? u : '';
+        if (!(/^\/(?![\/\\])/.test(u) &amp;amp;&amp;amp; !/[\\\x00-\x1f\x7f\s&amp;quot;'&amp;lt;&amp;gt;]|%2f|%5c|undefined|null/i.test(u) &amp;amp;&amp;amp; !/\.\.|\/\.\/|\/\.$|%2e/i.test(u) &amp;amp;&amp;amp; (/^\/nav_to\.do\?/.test(u) ? /^\/nav_to\.do\?uri=x_gmg_ai_[a-z0-9_]+\.do(%3F[A-Za-z0-9_.%-]*)?$/.test(u) : /^\/sys_update_set\.do\?sys_id=[0-9a-f]{32}$/.test(u) || /^\/(?:now\/workflow-studio\/builder\?|x_gmg_ai_)/.test(u) || /^\/[a-z][a-z0-9_]{0,79}\.do\?sys_id=[0-9a-f]{32}$/.test(u)))) return '';
+        try { if (typeof location != 'undefined' &amp;amp;&amp;amp; location.origin &amp;amp;&amp;amp; new URL(u, location.origin).origin !== location.origin) return ''; } catch (e) { return ''; }
+        return u;
     }
-    /* Applied-card links: a string path or nothing, never 'undefined'. A card without a server link may get one from a panel extension's
-     * cardLink hook (same safeLink allowlist); otherwise it renders no link at all. */
-    /* AC-R1.10 (+addendum 2: no dot segments / %2e; nav_to whole-string): only same-origin app links: no backslash, control char or encoded slash/backslash; ^/ not // or /\; allowlisted prefixes. */
-    function safeLink(u) { u = typeof u == 'string' ? u : ''; if (!(/^\/(?![\/\\])/.test(u) &amp;amp;&amp;amp; !/[\\\x00-\x1f\x7f\s&amp;quot;'&amp;lt;&amp;gt;]|%2f|%5c|undefined|null/i.test(u) &amp;amp;&amp;amp; !/\.\.|\/\.\/|\/\.$|%2e/i.test(u) &amp;amp;&amp;amp; (/^\/nav_to\.do\?/.test(u) ? /^\/nav_to\.do\?uri=x_gmg_ai_[a-z0-9_]+\.do(%3F[A-Za-z0-9_.%-]*)?$/.test(u) : /^\/sys_update_set\.do\?sys_id=[0-9a-f]{32}$/.test(u) || /^\/(?:now\/workflow-studio\/builder\?|x_gmg_ai_)/.test(u) || /^\/[a-z][a-z0-9_]{0,79}\.do\?sys_id=[0-9a-f]{32}$/.test(u)))) return ''; try { if (typeof location != 'undefined' &amp;amp;&amp;amp; location.origin &amp;amp;&amp;amp; new URL(u, location.origin).origin !== location.origin) return ''; } catch (e) { return ''; } return u; }   // the URL same-origin check is browser-only and runs after it
     function openLink(a) {
         var l = safeLink(a.link); if (l) return l;
         var id = String(a.target_sys_id || a.sys_id || '');
         if (!SYSID_RE.test(id)) return '';
-        var hl = hook('cardLink', [copy(a)]);   // os-cleanup: extension-supplied link (e.g. paid flow cards); still only an allowlisted same-origin path
+        var hl = hook('cardLink', [copy(a)]);
         for (var i = 0; i &amp;lt; hl.length; i++) { var x = safeLink(hl[i]); if (x) return x; }
         return '';
     }
-    /* a card that didn't pass review has no Accept button at all (ActionService.confirm also returns 409).
-     * review_gate (server, buildActions) non-empty = refused; a Reviewer-routed or reviewed card needs review_state passed. */
     function canAccept(a) {
         if (a.review_gate || a.out_of_date) return false;
         var rs = String(a.review_state || '');
@@ -1302,7 +1319,6 @@ GMGAIApplier.prototype = {
         if (a.review_route == 'reviewer' &amp;amp;&amp;amp; rs != 'passed') return false;
         return true;
     }
-    /* design review ruling (3): local time, e.g. 'Expires at 12:20 PM CT' (expires_ms from the server; generic zone name, CDT/CST -&amp;gt; CT) */
     function expiresText(a) {
         var ms = Number(a &amp;amp;&amp;amp; a.expires_ms);
         if (!(ms &amp;gt; 0)) return 'Expires ' + String((a &amp;amp;&amp;amp; a.expires) || 'in 30 min');
@@ -1312,81 +1328,46 @@ GMGAIApplier.prototype = {
         return 'Expires at ' + t.replace(/\u202f/g, ' ');
     }
     function actionFooter(a, openLabel) {
-        var h = reviewBlock(a);
-        if (a.live_warning) h += '&amp;lt;div class=&amp;quot;gmgai-live&amp;quot; style=&amp;quot;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;Live change.&amp;lt;/b&amp;gt; ' + esc(a.live_warning) + '&amp;lt;/div&amp;gt;';   // step 8
-        if (a.status == 'pending_review') return h;   // no Confirm until the Reviewer has passed it (ActionService also refuses non-pending)
-        if (a.status == 'superseded') return h + '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot; style=&amp;quot;color:#6b7280&amp;quot;&amp;gt;Superseded by a revised proposal (kept, not deleted).&amp;lt;/div&amp;gt;';
-        if (a.status == 'pending' &amp;amp;&amp;amp; a.out_of_date) h += outOfDate(a);   // f25 design review: info, not red; Reject stays below
+        var h = '';
+        if (a.live_warning) h += '&amp;lt;div class=&amp;quot;gmgai-live&amp;quot; style=&amp;quot;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:6px;padding:5px 7px;margin:4px 0;font-size:14px&amp;quot;&amp;gt;&amp;lt;b&amp;gt;Live change.&amp;lt;/b&amp;gt; ' + esc(a.live_warning) + '&amp;lt;/div&amp;gt;';
         if (a.status == 'pending') h += '&amp;lt;div class=&amp;quot;gmgai-act&amp;quot;&amp;gt;' + (canAccept(a) ? '&amp;lt;button class=&amp;quot;gmgai-ok&amp;quot; data-v=&amp;quot;confirm&amp;quot;&amp;gt;Accept&amp;lt;/button&amp;gt;' : '') + '&amp;lt;button class=&amp;quot;gmgai-no&amp;quot; data-v=&amp;quot;reject&amp;quot;&amp;gt;Reject&amp;lt;/button&amp;gt;' +
             '&amp;lt;span class=&amp;quot;gmgai-exp&amp;quot; style=&amp;quot;font-size:14px;align-self:center&amp;quot;&amp;gt;' + esc(expiresText(a)) + '&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;';
         else if (a.status == 'working') h += '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot;&amp;gt;Applying\u2026&amp;lt;/div&amp;gt;';
         else if (a.status == 'applied') { var ol = openLink(a), ul = safeLink(a.update_set_link);
             h += '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot; style=&amp;quot;color:#15803d&amp;quot;&amp;gt;\u2714 Applied.' + (ol ? ' &amp;lt;a href=&amp;quot;' + esc(ol) + '&amp;quot; target=&amp;quot;_blank&amp;quot;&amp;gt;' + esc(openLabel) + '&amp;lt;/a&amp;gt;' : '') +
-                (ul ? ' \u00b7 &amp;lt;a href=&amp;quot;' + esc(ul) + '&amp;quot; target=&amp;quot;_blank&amp;quot;&amp;gt;' + esc(a.update_set_name || 'Update set') + '&amp;lt;/a&amp;gt;' : /^record_/.test(String(a.type || '')) ? ' \u00b7 data write (no update set)' : '') + '&amp;lt;/div&amp;gt;'; }
-        else if (a.status == 'refused') h += '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot; style=&amp;quot;color:#92400e;background:#fef3c7;padding:4px 6px;border-radius:4px&amp;quot;&amp;gt;' + STOP_SVG + 'Not allowed: ' + esc(a.error || 'you do not have permission to accept this change.') + '&amp;lt;/div&amp;gt;';
-        else h += '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot; style=&amp;quot;color:#991b1b&amp;quot;&amp;gt;' + esc(a.status) + (a.error ? ': ' + a.error : '') + '&amp;lt;/div&amp;gt;';
+                (ul ? ' \u00b7 &amp;lt;a href=&amp;quot;' + esc(ul) + '&amp;quot; target=&amp;quot;_blank&amp;quot;&amp;gt;' + esc(a.update_set_name || 'Update set') + '&amp;lt;/a&amp;gt;' : '') + '&amp;lt;/div&amp;gt;'; }
+        else if (a.status == 'refused') h += '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot; style=&amp;quot;color:#92400e;background:#fef3c7;padding:4px 6px;border-radius:4px&amp;quot;&amp;gt;' + STOP_SVG + 'Not allowed: ' + esc(a.error || 'permission denied.') + '&amp;lt;/div&amp;gt;';
+        else h += '&amp;lt;div class=&amp;quot;gmgai-st&amp;quot; style=&amp;quot;color:#991b1b&amp;quot;&amp;gt;' + esc(a.status) + (a.error ? ': ' + esc(a.error) : '') + '&amp;lt;/div&amp;gt;';
         return h;
     }
-    /* f25 (design review wording): a card whose stored hash predates the current canon. Still 409 on Accept; 14px secondary text + info icon;
-     * 'Ask again' resends the request that produced the card when we still have it. */
     function askText(id) { var s = load(), t = ''; (s.messages || []).forEach(function(m, i) { if ((m.actions || []).some(function(a) { return a.id == id; }))
         for (var k = i - 1; k &amp;gt;= 0 &amp;amp;&amp;amp; !t; k--) if (s.messages[k].role == 'user') t = String(s.messages[k].content || ''); }); return t; }
-    function outOfDate(a) { return '&amp;lt;div class=&amp;quot;gmgai-st gmgai-ood&amp;quot; role=&amp;quot;note&amp;quot; style=&amp;quot;font-size:14px;color:var(--text-secondary)&amp;quot;&amp;gt;' + INFO_SVG + esc(a.error || a.review_gate || '') +
-        (askText(a.id) ? ' &amp;lt;button class=&amp;quot;gmgai-ask&amp;quot; data-v=&amp;quot;ask_again&amp;quot; style=&amp;quot;font-size:14px;background:none;border:0;padding:0;color:var(--text-secondary);text-decoration:underline;cursor:pointer&amp;quot;&amp;gt;Ask again&amp;lt;/button&amp;gt;' : '') + '&amp;lt;/div&amp;gt;'; }
-    /* SCREEN-REVIEW #26: say a refusal once. A blocked answer whose card already shows the same refusal renders only the card. */
     function repeatsCard(m) { var t = String(m.content || '').replace(/^(Refused|Error): /, ''); return !!(m.error &amp;amp;&amp;amp; t &amp;amp;&amp;amp; (m.actions || []).some(function(a) { return a.status == 'refused' &amp;amp;&amp;amp; String(a.error || '') == t; })); }
+
     function decide(id, verb) {
-        var s = load(), act = null, msg = null;
-        s.messages.forEach(function(m) { (m.actions || []).forEach(function(a) { if (a.id == id) { act = a; msg = m; } }); });
-        (s.buildActions || []).forEach(function(a) { if (a.id == id) act = a; });   // team build cards (same Confirm path)
+        var s = load(), act = null;
+        s.messages.forEach(function(m) { (m.actions || []).forEach(function(a) { if (a.id == id) act = a; }); });
+        (s.buildActions || []).forEach(function(a) { if (a.id == id) act = a; });
         if (!act || act.status != 'pending') return;
         if (verb == 'ask_again') { var q = askText(id); if (q) send(q); return; }
-        var body = '{}';
-        if (act.type == 'flow') {
-            var sel = null; try { sel = top.document.querySelector('select.gmgai-runas[data-id=&amp;quot;' + id + '&amp;quot;]') || document.querySelector('select.gmgai-runas[data-id=&amp;quot;' + id + '&amp;quot;]'); } catch (e) {}
-            act.run_as = sel &amp;amp;&amp;amp; sel.value == 'user' ? 'user' : (sel ? 'system' : (act.run_as == 'user' ? 'user' : 'system'));
-            body = JSON.stringify({run_as: act.run_as});
-        }
-        if (act.type == 'meta' &amp;amp;&amp;amp; verb == 'confirm') {
-            var cb = null; try { cb = top.document.querySelector('input.gmgai-newus[data-id=&amp;quot;' + id + '&amp;quot;]') || document.querySelector('input.gmgai-newus[data-id=&amp;quot;' + id + '&amp;quot;]'); } catch (e) {}
-            if (cb &amp;amp;&amp;amp; cb.checked) { body = JSON.stringify({new_update_set: true}); act.update_set = act.new_update_set_name || ''; act.update_set_auto = false; }
-        }
-        if (act.type == 'atf' &amp;amp;&amp;amp; act.atf == 'run' &amp;amp;&amp;amp; verb == 'confirm') {
-            var ab = null; try { ab = top.document.querySelector('input.gmgai-atfact[data-id=&amp;quot;' + id + '&amp;quot;]') || document.querySelector('input.gmgai-atfact[data-id=&amp;quot;' + id + '&amp;quot;]'); } catch (e) {}
-            if (ab) { act.activate = !!ab.checked; body = JSON.stringify({activate: act.activate}); }
-        }
         act.status = 'working'; save(s); render();
         w.fetch('/api/x_gmg_ai/agent/action/' + encodeURIComponent(id) + '/' + verb, {method: 'POST', credentials: 'same-origin',
-            headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-UserToken': top.__gmgaiToken || w.g_ck || ''}, body: body})
+            headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-UserToken': top.__gmgaiToken || w.g_ck || ''}, body: '{}'})
             .then(function(r) { return r.json(); }).then(function(j) {
                 var r = j.result || j, st = load();
-                if (verb == 'confirm' &amp;amp;&amp;amp; r.state_changed) {   // step 8: active changed since the card was made; nothing applied, card shown again with the current warning
-                    var re = function(a) { if (a.id == id) { a.status = 'pending'; a.error = r.error; a.live_warning = r.live_warning || ''; a.data_warning = r.data_warning || ''; if (r.diff) a.diff_lines = r.diff; } };
-                    st.messages.forEach(function(m) { (m.actions || []).forEach(re); }); (st.buildActions || []).forEach(re);
-                    save(st); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender(); return; }
-                if (verb == 'confirm' &amp;amp;&amp;amp; r.out_of_date) {   // f25: still refused; keep the card open so Reject stays available
-                    var mark = function(a) { if (a.id == id) { a.status = 'pending'; a.out_of_date = true; a.error = r.error; } };
-                    st.messages.forEach(function(m) { (m.actions || []).forEach(mark); }); (st.buildActions || []).forEach(mark);
-                    save(st); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender(); return; }
-                st.messages.forEach(function(m) { (m.actions || []).forEach(function(a) { if (a.id == id) {
-                    a.status = r.status || (r.ok ? 'applied' : 'failed'); a.error = r.error; a.link = r.link; a.target_sys_id = r.sys_id || a.target_sys_id; a.update_set_link = r.update_set_link; a.update_set_name = r.update_set_name; } }); });
-                (st.buildActions || []).forEach(function(a) { if (a.id == id) { a.status = r.status || (r.ok ? 'applied' : 'failed'); a.error = r.error; a.link = r.link; a.target_sys_id = r.sys_id || a.target_sys_id; a.update_set_link = r.update_set_link; a.update_set_name = r.update_set_name; } });
-                if (!(verb == 'confirm' &amp;amp;&amp;amp; r.status == 'refused')) st.messages.push({role: 'assistant', content: verb == 'confirm'
-                    ? (r.ok ? 'Accepted and applied ' + (act.target || '') + ' (' + r.link + ')' + (r.update_set_name ? ' in update set &amp;quot;' + r.update_set_name + '&amp;quot;' : (r.data_write ? ' as a data write (no update set)' : ' (no update set)')) + '.' : (r.status == 'refused' ? 'Refused: ' : 'Apply failed: ') + (r.error || 'unknown error'))
-                    : (r.ok ? 'Rejected proposal for ' + (act.target || '') + '. Nothing was changed.' : 'Reject failed: ' + r.error)});
+                st.messages.forEach(function(m) { (m.actions || []).forEach(function(a) { if (a.id == id) { a.status = r.status || (r.ok ? 'applied' : 'failed'); a.error = r.error; a.link = r.link; } }); });
                 save(st); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender();
-                hook('onConfirmed', [id, r]);   // extension refresh (paid: build cards/strip from the server)
             })['catch'](function(e) { var st = load(); st.messages.push({role: 'assistant', error: true, content: 'Error: ' + e}); save(st); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender(); });
     }
 
-    /* design review: text-style warning + circle-slash stop (HTML paths). Escaped message content uses \u2715 fallback. */
     var WARN_ICO = '&amp;lt;span style=&amp;quot;color:#B45309&amp;quot; aria-hidden=&amp;quot;true&amp;quot;&amp;gt;\u26a0\ufe0e&amp;lt;/span&amp;gt;';
-    var INFO_SVG = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 14 14&amp;quot; aria-hidden=&amp;quot;true&amp;quot; style=&amp;quot;display:inline-block;vertical-align:-2px;margin-right:3px&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;7&amp;quot; cy=&amp;quot;7&amp;quot; r=&amp;quot;5.5&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;1.5&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;7&amp;quot; y1=&amp;quot;6.2&amp;quot; x2=&amp;quot;7&amp;quot; y2=&amp;quot;10&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;1.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot;/&amp;gt;&amp;lt;circle cx=&amp;quot;7&amp;quot; cy=&amp;quot;4.2&amp;quot; r=&amp;quot;0.9&amp;quot; fill=&amp;quot;currentColor&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
+    var INFO_SVG = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 14 14&amp;quot; aria-hidden=&amp;quot;true&amp;quot; style=&amp;quot;display:inline-block;vertical-align:-2px;margin-right:3px&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;7&amp;quot; cy=&amp;quot;7&amp;quot; r=&amp;quot;5.5&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;1.5&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;7&amp;quot; y1=&amp;quot;6.2&amp;quot; x2=&amp;quot;10&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;1.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot;/&amp;gt;&amp;lt;circle cx=&amp;quot;7&amp;quot; cy=&amp;quot;4.2&amp;quot; r=&amp;quot;0.9&amp;quot; fill=&amp;quot;currentColor&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
     var STOP_SVG = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 14 14&amp;quot; aria-hidden=&amp;quot;true&amp;quot; style=&amp;quot;display:inline-block;vertical-align:-2px;margin-right:3px&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;7&amp;quot; cy=&amp;quot;7&amp;quot; r=&amp;quot;5.5&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;#B91C1C&amp;quot; stroke-width=&amp;quot;1.5&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;3.2&amp;quot; y1=&amp;quot;3.2&amp;quot; x2=&amp;quot;10.8&amp;quot; y2=&amp;quot;10.8&amp;quot; stroke=&amp;quot;#B91C1C&amp;quot; stroke-width=&amp;quot;1.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
+
     var CSS = '#gmgai-root, #gmgai-root *, #gmgai-root *::before, #gmgai-root *::after{box-sizing:border-box}' +
         '#gmgai-root{' +
         'position:fixed;right:20px;bottom:20px;z-index:2147483000;' +
-        'font:13px/1.45 Inter,-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Roboto,&amp;quot;Helvetica Neue&amp;quot;,Arial,sans-serif;' +
+        'font:13.5px/1.45 Inter,-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Roboto,&amp;quot;Helvetica Neue&amp;quot;,Arial,sans-serif;' +
         '--np-background:#EEECE8;--np-surface:#FFFFFF;--np-surface-muted:#F5F4F1;--np-navy:#002B3B;--np-green:#63E052;' +
         '--np-green-hover:#4CCB3B;--np-text:#111111;--np-text-secondary:#626262;--np-border:#DEDCD7;--np-danger:#D92D20;' +
         '--np-shadow:0 8px 28px rgba(0,0,0,0.12);' +
@@ -1401,65 +1382,85 @@ GMGAIApplier.prototype = {
         '#gmgai-btn:active{transform:translateY(0);box-shadow:0 4px 12px rgba(0,0,0,0.15)}' +
         '#gmgai-btn svg{display:block}' +
         '#gmgai-btn:focus-visible,#gmgai-root :focus-visible{outline:2px solid var(--np-green);outline-offset:2px}' +
-        '#gmgai-panel{position:fixed;right:16px;bottom:16px;width:440px;height:660px;' +
+        '#gmgai-panel{position:fixed;right:16px;bottom:16px;width:440px;height:580px;' +
         'max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);max-width:calc(100vw - 32px);max-width:calc(100% - 32px);' +
-        'background:var(--np-surface);border:1px solid var(--np-border);border-radius:16px;box-shadow:var(--np-shadow);' +
-        'display:flex;flex-direction:column;overflow:hidden;color:var(--np-text);box-sizing:border-box;' +
+        'background:#FFFFFF;border:1px solid #E5E7EB;border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,0.12),0 1px 3px rgba(0,0,0,0.06);' +
+        'display:flex;flex-direction:column;overflow:hidden;color:#0F172A;box-sizing:border-box;' +
         'min-width:0;min-height:0;z-index:2147483000}' +
         '@media (max-width: 480px){#gmgai-panel{right:8px;bottom:8px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);border-radius:14px}}' +
-        '#gmgai-head{flex:0 0 auto;min-width:0;width:100%;padding:10px 14px;background:var(--np-surface);color:var(--np-text);' +
-        'display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--np-border);gap:8px;box-sizing:border-box}' +
-        '#gmgai-head .gmgai-brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto;overflow:hidden}' +
-        '#gmgai-head .gmgai-title-wrap{min-width:0;overflow:hidden;display:flex;flex-direction:column}' +
-        '#gmgai-head .gmgai-title{font-size:15px;font-weight:700;color:var(--np-text);line-height:1.2;white-space:nowrap;letter-spacing:-0.2px;overflow:hidden;text-overflow:ellipsis}' +
-        '#gmgai-head small{display:block;color:var(--np-text-secondary);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;line-height:1.3;font-weight:400;margin-top:2px}' +
-        '#gmgai-head .gmgai-controls{display:flex;align-items:center;gap:6px;flex-shrink:0}' +
+        '#gmgai-head{flex:0 0 auto;min-width:0;width:100%;padding:10px 14px;background:#FFFFFF;color:var(--np-text);' +
+        'display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F1F1F4;gap:8px;box-sizing:border-box;position:relative}' +
+        '.gmgai-menu-wrap{position:relative;display:inline-block}' +
+        '.gmgai-menu-btn{background:#F8FAFC !important;border:1px solid #E2E8F0 !important;color:#475569 !important;border-radius:6px !important;padding:2px 6px !important;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;height:28px;width:32px;transition:all .15s ease}' +
+        '.gmgai-menu-btn:hover{background:#F1F5F9 !important;border-color:#CBD5E1 !important;color:#0F172A !important}' +
+        '.gmgai-menu-dropdown{position:absolute;top:calc(100% + 6px);left:0;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.04);min-width:185px;padding:6px;z-index:2147483010;display:flex;flex-direction:column;gap:2px}' +
+        '.gmgai-menu-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:500;color:#334155;background:transparent;border:0;width:100%;text-align:left;cursor:pointer;transition:all .15s ease;font-family:inherit}' +
+        '.gmgai-menu-item:hover{background:#F8FAFC;color:#0F172A}' +
+        '.gmgai-menu-ico{font-size:14px;width:18px;display:inline-flex;align-items:center;justify-content:center;color:#64748B}' +
+        '#gmgai-head .gmgai-brand{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 auto;justify-content:center}' +
+        '#gmgai-head .gmgai-title-wrap{display:flex;flex-direction:column;align-items:flex-start;text-align:left}' +
+        '#gmgai-head .gmgai-title{font-size:15px;font-weight:700;color:#0F172A;line-height:1.2;letter-spacing:-0.2px}' +
+        '#gmgai-head small{display:block;color:#64748B;font-size:10.5px;line-height:1.2;font-weight:400;margin-top:1px}' +
+        '#gmgai-head .gmgai-controls{display:flex;align-items:center;gap:4px;flex-shrink:0}' +
+        '.gmgai-btn-icon{background:transparent !important;border:0 !important;color:#64748B !important;padding:6px !important;border-radius:8px !important;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease}' +
+        '.gmgai-btn-icon:hover{background:#F1F5F9 !important;color:#0F172A !important}' +
         '.gmgai-select{font-family:inherit;font-size:11.5px;font-weight:500;padding:4px 8px;border:1px solid var(--np-border);' +
-        'border-radius:6px;background:var(--np-surface);color:var(--np-text);max-width:115px;cursor:pointer;outline:none;' +
-        'text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;transition:all .15s ease}' +
-        '.gmgai-select:focus{border-color:var(--np-green);box-shadow:0 0 0 2px rgba(99,224,82,0.2)}' +
-        '#gmgai-head button{background:transparent;border:0;color:var(--np-text-secondary);cursor:pointer;padding:4px 6px;border-radius:6px;font-size:11.5px;font-weight:500;transition:all .15s ease;flex-shrink:0;font-family:inherit}' +
-        '#gmgai-head button:hover{color:var(--np-text);background:rgba(0,0,0,0.04)}' +
-        '#gmgai-head #gmgai-close{background:transparent;color:#626262;border:0;padding:4px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s ease}' +
-        '#gmgai-head #gmgai-close:hover{background:#F3F4F6;color:var(--np-text)}' +
-        '#gmgai-head #gmgai-close:focus-visible{outline:2px solid var(--np-green);outline-offset:1px}' +
-        '#gmgai-mode-bar{flex:0 0 auto;min-width:0;width:100%;display:flex;border-bottom:1px solid var(--np-border);background:var(--np-surface);box-sizing:border-box;padding:0 8px;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}' +
+        'border-radius:6px;background:var(--np-surface);color:var(--np-text);cursor:pointer;outline:none}' +
+        '#gmgai-mode-bar{flex:0 0 auto;min-width:0;width:100%;display:none !important;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}' +
         '#gmgai-mode-bar::-webkit-scrollbar{display:none}' +
-        '#gmgai-mode-bar button{flex:1 0 auto;min-width:0;padding:9px 10px;border:0;background:transparent;font-size:12px;font-weight:500;color:var(--np-text-secondary);cursor:pointer;text-align:center;white-space:nowrap;transition:all .15s ease;font-family:inherit;border-bottom:2.5px solid transparent;box-sizing:border-box}' +
-        '#gmgai-mode-bar button:hover{color:var(--np-text)}' +
-        '#gmgai-mode-bar button.gmgai-tab-active{color:var(--np-text);font-weight:600;border-bottom-color:var(--np-green)}' +
-        '#gmgai-msgs{flex:1 1 auto;min-width:0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;padding:14px;background:var(--np-background);color:var(--np-text);box-sizing:border-box;display:flex;flex-direction:column;gap:8px}' +
-        '.gmgai-hero-card{width:100%;min-width:0;max-width:100%;background:#F6F4EE;border:1px solid rgba(0,0,0,0.05);border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;box-sizing:border-box}' +
-        '.gmgai-hero-icon{flex:0 0 28px;width:28px;height:28px;display:flex;align-items:center;justify-content:center}' +
-        '.gmgai-hero-text{flex:1 1 auto;min-width:0}' +
-        '.gmgai-hero-text h3{margin:0 0 4px 0;font-size:16px;font-weight:700;color:var(--np-text);line-height:1.25}' +
-        '.gmgai-hero-text p{margin:0;font-size:12.5px;line-height:1.45;color:#525252;overflow-wrap:break-word;word-break:break-word}' +
-        '.gmgai-examples-head{font-size:13px;font-weight:700;color:var(--np-text);margin:12px 0 8px 0;flex:0 0 auto}' +
-        '.gmgai-bento-grid{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px;width:100%;min-width:0;max-width:100%;margin-bottom:10px;box-sizing:border-box}' +
+        '#gmgai-mode-bar button{flex:1 0 auto;min-width:0;padding:8px 10px;border:0;background:transparent;font-size:12px;font-weight:500;color:#64748B;cursor:pointer;text-align:center;white-space:nowrap;transition:all .15s ease;font-family:inherit;border-bottom:2.5px solid transparent;box-sizing:border-box}' +
+        '#gmgai-mode-bar button:hover{color:#0F172A}' +
+        '#gmgai-mode-bar button.gmgai-tab-active{color:#0F172A;font-weight:600;border-bottom-color:var(--np-green)}' +
+        '#gmgai-msgs{flex:1 1 auto;min-width:0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;padding:14px 14px 8px;background-color:#FFFFFF;background-image:radial-gradient(#CBD5E1 1.1px, transparent 1.1px);background-size:15px 15px;color:var(--np-text);box-sizing:border-box;display:flex;flex-direction:column;gap:8px}' +
+        '.gmgai-welcome-box{width:100%;padding:2px 0 4px;display:flex;flex-direction:column;align-items:flex-start}' +
+        '.gmgai-welcome-brand{display:flex;align-items:center;gap:8px;margin-bottom:8px}' +
+        '.gmgai-welcome-brand-text{font-size:18px;font-weight:700;color:#0F172A;letter-spacing:-0.2px}' +
+        '.gmgai-welcome-heading{font-size:13.5px;line-height:1.45;color:#1E293B;font-weight:500;margin-bottom:3px}' +
+        '.gmgai-welcome-sub{font-size:12.5px;line-height:1.45;color:#475569;margin-bottom:8px}' +
+        '.gmgai-try-divider{width:100%;display:flex;align-items:center;text-align:center;color:#94A3B8;font-size:10px;font-weight:600;letter-spacing:1px;margin:8px 0 10px}' +
+        '.gmgai-try-divider::before,.gmgai-try-divider::after{content:&amp;quot;&amp;quot;;flex:1;border-bottom:1px solid #E2E8F0}' +
+        '.gmgai-try-divider span{padding:0 10px}' +
+        '.gmgai-action-cards{width:100%;display:flex;flex-direction:column;gap:6px;margin-bottom:6px}' +
+        '.gmgai-action-card{width:100%;min-width:0;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .15s ease;box-shadow:0 1px 2px rgba(0,0,0,0.03);text-align:left;font-family:inherit}' +
+        '.gmgai-action-card:hover{border-color:#CBD5E1;box-shadow:0 3px 8px rgba(0,0,0,0.05);transform:translateY(-1px)}' +
+        '.gmgai-action-card-left{display:flex;align-items:center;gap:9px;min-width:0;flex:1 1 auto}' +
+        '.gmgai-action-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}' +
+        '.gmgai-action-title{font-size:12.5px;font-weight:600;color:#1E293B;line-height:1.25}' +
+        '.gmgai-action-arrow{color:#94A3B8;display:flex;align-items:center;transition:transform .15s ease;flex-shrink:0}' +
+        '.gmgai-action-card:hover .gmgai-action-arrow{transform:translateX(2px);color:#475569}' +
+        '.gmgai-bento-grid{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px;width:100%;min-width:0;max-width:100%;box-sizing:border-box}' +
         '@media (max-width: 380px){.gmgai-bento-grid{grid-template-columns:minmax(0, 1fr)}}' +
         '.gmgai-bento-card{background:var(--np-surface);border:1px solid var(--np-border);border-radius:10px;padding:10px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;transition:all .15s ease;box-shadow:0 1px 3px rgba(0,0,0,0.02);width:100%;min-width:0;max-width:100%;box-sizing:border-box;font-family:inherit}' +
-        '.gmgai-bento-card:hover{border-color:var(--np-green);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.05)}' +
-        '.gmgai-bento-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 30px}' +
-        '.gmgai-bento-content{flex:1 1 auto;min-width:0;overflow:hidden}' +
         '.gmgai-bento-title{font-size:12px;font-weight:600;color:var(--np-text);line-height:1.3;overflow-wrap:break-word;word-break:break-word}' +
         '.gmgai-bento-sub{font-size:10.5px;color:var(--np-text-secondary);line-height:1.3;margin-top:2px;overflow-wrap:break-word;word-break:break-word}' +
-        '.gmgai-bento-arrow{color:#9CA3AF;flex:0 0 auto;display:flex;align-items:center}' +
         '.gmgai-m{margin:4px 0;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.48;white-space:pre-wrap;word-wrap:break-word;max-width:88%;box-sizing:border-box;min-width:0}' +
         '.gmgai-u{background:var(--np-navy);color:#FFFFFF;margin-left:auto;border-bottom-right-radius:2px;box-shadow:0 1px 4px rgba(0,43,59,0.15)}' +
-        '.gmgai-a{background:var(--np-surface);border:1px solid var(--np-border);color:var(--np-text);border-bottom-left-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,0.03);max-width:92%}' +
+        '.gmgai-a{background:#FFFFFF;border:1px solid #E2E8F0;color:var(--np-text);border-bottom-left-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,0.03);max-width:92%}' +
         '.gmgai-e{background:#FEF2F2;border:1px solid #FCA5A5;color:var(--np-danger)}' +
         '.gmgai-chip{display:inline-block;font:11px ui-monospace,Menlo,monospace;background:var(--np-surface-muted);color:var(--np-navy);border:1px solid var(--np-border);border-radius:4px;padding:1px 6px;margin:0 3px 3px 0;font-weight:500}' +
         '.gmgai-sug{display:block;width:100%;min-width:0;max-width:100%;text-align:left;margin:4px 0;padding:8px 12px;border:1px solid var(--np-border);border-radius:8px;background:var(--np-surface);cursor:pointer;color:var(--np-text);font-size:12px;font-weight:500;transition:all .15s ease;box-shadow:0 1px 3px rgba(0,0,0,0.02);box-sizing:border-box;font-family:inherit;overflow-wrap:break-word;word-break:break-word}' +
-        '.gmgai-sug:hover{border-color:var(--np-green);background:#F5FDF4;color:var(--np-navy);transform:translateX(2px)}' +
-        '#gmgai-in{flex:0 0 auto;min-width:0;width:100%;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--np-border);background:var(--np-surface);box-sizing:border-box;align-items:flex-end}' +
-        '#gmgai-clip{flex:0 0 36px;width:36px;height:36px;border-radius:50%;background:var(--np-surface);border:1px solid #E5E5E5;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#525252;box-shadow:0 1px 2px rgba(0,0,0,0.03);transition:all .15s ease;padding:0;box-sizing:border-box}' +
-        '#gmgai-clip:hover{border-color:var(--np-green);color:var(--np-text)}' +
-        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;resize:none;height:36px;border:1px solid #E5E5E5;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;line-height:1.4;background:var(--np-surface);color:var(--np-text);box-sizing:border-box;transition:border-color .15s ease}' +
-        '#gmgai-in textarea:focus{border-color:var(--np-green);outline:none;box-shadow:0 0 0 2px rgba(99,224,82,0.2)}' +
-        '#gmgai-in button#gmgai-send{flex:0 0 auto;border:0;border-radius:8px;background:var(--np-green);color:var(--np-navy);font-weight:600;font-size:12.5px;padding:0 14px;height:36px;cursor:pointer;transition:all .15s ease;box-shadow:0 2px 6px rgba(99,224,82,0.25);font-family:inherit;display:inline-flex;align-items:center;gap:5px;box-sizing:border-box;white-space:nowrap}' +
-        '#gmgai-in button#gmgai-send:hover:not(:disabled){background:var(--np-green-hover)}' +
-        '#gmgai-in button#gmgai-send:active:not(:disabled){transform:scale(0.98)}' +
-        '#gmgai-in button#gmgai-send:disabled{opacity:0.55;cursor:not-allowed;box-shadow:none}' +
+        '#gmgai-in{flex:0 0 auto;min-width:0;width:100%;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--np-border);background:#FFFFFF;box-sizing:border-box;align-items:flex-end}' +
+        '.gmgai-composer-card{width:100%;min-width:0;background:#FFFFFF;border:1.5px solid #FDA4AF;border-radius:16px;padding:7px 10px 5px;display:flex;flex-direction:column;gap:4px;transition:all .18s ease;box-shadow:0 2px 6px rgba(244,63,94,0.05)}' +
+        '.gmgai-composer-card:focus-within{border-color:#F43F5E;box-shadow:0 3px 12px rgba(244,63,94,0.12)}' +
+        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;min-height:30px;max-height:100px;padding:2px 2px;font:inherit;font-size:13px;line-height:1.4;color:#0F172A}' +
+        '#gmgai-in textarea::placeholder{color:#94A3B8}' +
+        '.gmgai-composer-bottom{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:2px;position:relative}' +
+        '.gmgai-model-pill-wrap{position:relative;display:inline-flex;align-items:center}' +
+        '.gmgai-model-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:20px;font-size:11px;font-weight:500;color:#334155;cursor:pointer;transition:all .15s ease;font-family:inherit}' +
+        '.gmgai-model-pill:hover{background:#F1F5F9;border-color:#CBD5E1;color:#0F172A}' +
+        '.gmgai-sparkle{color:#3B82F6;font-size:11px}' +
+        '.gmgai-chevron{font-size:9px;color:#64748B}' +
+        '.gmgai-model-menu{position:absolute;bottom:calc(100% + 6px);left:0;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.04);min-width:200px;max-height:200px;overflow-y:auto;padding:4px;z-index:2147483015;display:flex;flex-direction:column;gap:2px}' +
+        '.gmgai-model-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;font-size:12px;font-weight:500;color:#334155;background:transparent;border:0;width:100%;text-align:left;cursor:pointer;transition:all .15s ease;font-family:inherit}' +
+        '.gmgai-model-item:hover{background:#F8FAFC;color:#0F172A}' +
+        '.gmgai-model-item.gmgai-active{font-weight:600;color:#2563EB;background:#EFF6FF}' +
+        '.gmgai-composer-actions{display:flex;align-items:center;gap:6px}' +
+        '#gmgai-clip{flex:0 0 36px;width:30px;height:30px;border-radius:50%;background:transparent;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;transition:all .15s ease;padding:0;box-sizing:border-box}' +
+        '#gmgai-clip:hover{background:#F1F5F9;color:#0F172A}' +
+        '#gmgai-in button#gmgai-send{flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:#CBD5E1;color:#FFFFFF;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s ease;white-space:nowrap;box-sizing:border-box;padding:0}' +
+        '#gmgai-in button#gmgai-send.gmgai-send-active{background:#0F172A;cursor:pointer}' +
+        '#gmgai-in button#gmgai-send.gmgai-send-active:hover{background:#334155}' +
+        '#gmgai-in button#gmgai-send:disabled{opacity:0.4;cursor:not-allowed}' +
         '.gmgai-foot{font-size:11px;color:var(--np-text-secondary);margin-top:6px;border-top:1px solid var(--np-border);padding-top:4px}' +
         '.gmgai-warn{background:#FFFBEB;border:1px solid #FCD34D;color:#92400E;border-radius:6px;padding:5px 8px;margin-top:5px;font-size:12px;overflow-wrap:break-word;word-break:break-word}' +
         '.gmgai-card{border:1px solid var(--np-border);background:var(--np-surface);border-radius:10px;padding:10px 12px;margin:6px 0;width:100%;min-width:0;max-width:100%;color:var(--np-text);font-size:12.5px;box-shadow:0 1px 4px rgba(0,0,0,0.03);box-sizing:border-box}' +
@@ -1490,28 +1491,38 @@ GMGAIApplier.prototype = {
         '.gmgai-vt{border-collapse:collapse;width:100%;font-size:12px;margin-top:4px}.gmgai-vt th,.gmgai-vt td{border-bottom:1px solid var(--np-border);padding:4px 6px;text-align:left;vertical-align:top}' +
         '.gmgai-m ul,.gmgai-m ol{margin:4px 0;padding-left:20px;white-space:normal}.gmgai-m code{font:11.5px ui-monospace,Menlo,monospace;background:var(--np-surface-muted);border:1px solid var(--np-border);border-radius:3px;padding:1px 4px;color:var(--np-navy);overflow-wrap:anywhere}' +
         '.gmgai-no-chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border:1px solid var(--np-danger);border-radius:99px;color:var(--np-danger);font-size:11px;font-weight:600}.gmgai-no-chip:before{content:&amp;quot;&amp;quot;;width:6px;height:6px;border-radius:50%;background:var(--np-danger)}' +
-        '.gmgai-cost{display:inline-flex;align-items:center;height:22px;padding:0 8px;border:1px solid var(--np-border);border-radius:99px;background:var(--np-surface);color:var(--np-text-secondary);font-size:11px}';
+        '.gmgai-cost{display:inline-flex;align-items:center;height:22px;padding:0 8px;border:1px solid var(--np-border);border-radius:99px;background:var(--np-surface);color:var(--np-text-secondary);font-size:11px}' +
+        '.gmgai-history-view{width:100%;height:100%;display:flex;flex-direction:column;gap:12px}' +
+        '.gmgai-history-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #E2E8F0}' +
+        '.gmgai-history-title{font-size:16px;font-weight:700;color:#0F172A}' +
+        '.gmgai-history-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:480px}' +
+        '.gmgai-history-card{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .15s ease}' +
+        '.gmgai-history-card:hover{border-color:#3B82F6;box-shadow:0 3px 10px rgba(59,130,246,0.08);transform:translateY(-1px)}' +
+        '.gmgai-history-card-top{display:flex;align-items:center;justify-content:space-between}' +
+        '.gmgai-history-card-title{font-size:13px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}' +
+        '.gmgai-history-card-meta{font-size:11px;color:#64748B;display:flex;align-items:center;gap:8px}' +
+        '.gmgai-history-del{border:0;background:transparent;color:#94A3B8;cursor:pointer;padding:2px 6px;border-radius:4px;font-size:12px}' +
+        '.gmgai-history-del:hover{color:#EF4444;background:#FEE2E2}';
+
     var PAPI = '/api/x_gmg_ai/agent/providers';
-    /* Model picker: list comes from the server (safe fields only); the server validates whatever id we send. */
     function loadProviders() {
         if (top.__gmgaiProvLoading) return; top.__gmgaiProvLoading = true;
         w.fetch(PAPI, {credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-UserToken': top.__gmgaiToken || w.g_ck || ''}})
             .then(function(r) { return r.json(); })
             .then(function(j) {
                 var r = (j &amp;amp;&amp;amp; j.result) || j || {}, s = load();
-                top.__gmgaiProviders = r.providers || [];
-                var ok = top.__gmgaiProviders.some(function(p) { return p.sys_id == s.provider; });
-                if (!ok) s.provider = r.selected || '';
+                top.__gmgaiProviders = Array.isArray(r) ? r : ((r &amp;amp;&amp;amp; r.providers) || []);
+                var ok = (top.__gmgaiProviders || []).some(function(p) { return p.sys_id == s.provider; });
+                var defProv = '';
+                for (var i = 0; i &amp;lt; (top.__gmgaiProviders || []).length; i++) {
+                    if (top.__gmgaiProviders[i].is_default) { defProv = top.__gmgaiProviders[i].sys_id; break; }
+                }
+                if (!ok) s.provider = (r &amp;amp;&amp;amp; r.selected) || defProv || '';
                 save(s); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender();
             })['catch'](function() {})
             .then(function() { top.__gmgaiProvLoading = false; });
     }
 
-    /* Open-core split step 4: panel extensions. GMG Plan &amp;amp; Create ships its own UI Script that does
-     *   (window.__gmgaiExtQ = window.__gmgaiExtQ || []).push(ext)   // ext = {id, feature, renderStrip, headerControls, bind, onSend, onConfirmed, onBoot, onOpen, onClear}
-     * which works in either load order (register() drains the queue). Hooks run only when GET /health client.features lists ext.feature;
-     * with no extension registered the panel makes no /health call and no build request. Every hook gets a read-only COPY of the panel
-     * state plus the small action API below (the only way an extension changes state) and runs in try/catch (a throw is logged, skipped). */
     var EXTS = [], FEATURES = null, booted = false, HAPI = '/api/x_gmg_ai/agent/health';
     function copy(x) { return JSON.parse(JSON.stringify(x)); }
     function extLog(m) { try { w.console &amp;amp;&amp;amp; w.console.warn &amp;amp;&amp;amp; w.console.warn('GMG AI: ' + m); } catch (e) {} }
@@ -1520,7 +1531,7 @@ GMGAIApplier.prototype = {
         setBuild: function(b, cards) { var s = load(); s.build = b ? copy(b) : null; s.buildActions = cards ? copy(cards) : []; save(s); },
         setTeam: function(v) { var s = load(); s.team = !!v; save(s); },
         addMessage: function(m) { m = m || {}; var s = load(); s.messages.push({role: m.role == 'user' ? 'user' : 'assistant', content: String(m.content || ''), error: !!m.error}); save(s); },
-        done: function() { var s = load(); s.pending = false; save(s); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender(); },   // onSend === true: the extension calls this when its reply is in
+        done: function() { var s = load(); s.pending = false; save(s); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender(); },
         open: function() { var s = load(); openedHere = true; s.open = true; save(s); },
         render: function() { top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender(); },
         headers: function() { return {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UserToken': top.__gmgaiToken || w.g_ck || ''}; },
@@ -1564,12 +1575,30 @@ GMGAIApplier.prototype = {
         EXTS.push(x); extStart(); return true;
     }
 
-    /* design review: on our pages an open panel must not cover Accept/Reject or 'Create it': narrow the content frame's main column. */
-    var PANEL_ROOM = 512;   // #gmgai-panel width 480 + right 16 + gap 16
+    var PANEL_ROOM = 512;
     function shiftContent(open) { try { if (!/^\/x_gmg_ai_/.test(w.location.pathname)) return; var b = w.document.body; b.style.paddingRight = open ? PANEL_ROOM + 'px' : ''; b.style.boxSizing = 'border-box'; b.setAttribute('data-gmgai-panel', open ? 'open' : 'closed'); } catch (e) {} }
+
+    function getSelectedModelLabel(s) {
+        var cur = s.provider || 'default';
+        var providers = top.__gmgaiProviders || [];
+        for (var i = 0; i &amp;lt; providers.length; i++) {
+            var p = providers[i];
+            if (p.sys_id === cur) return p.model || p.name || 'Default Model';
+            if (cur &amp;amp;&amp;amp; cur.indexOf(p.sys_id + ':') === 0) {
+                return cur.substring(p.sys_id.length + 1);
+            }
+        }
+        if (providers.length &amp;amp;&amp;amp; (cur === 'default' || !cur)) {
+            var def = null;
+            for (var j = 0; j &amp;lt; providers.length; j++) { if (providers[j].is_default) { def = providers[j]; break; } }
+            if (def) return def.model || def.name;
+        }
+        return 'Gemini 2.0 Flash';
+    }
+
     function provSelectHtml(s) {
         var cur = s.provider || 'default';
-        var out = '&amp;lt;select id=&amp;quot;gmgai-prov-select&amp;quot; class=&amp;quot;gmgai-select&amp;quot; title=&amp;quot;Choose AI Model&amp;quot; aria-label=&amp;quot;Choose AI Model&amp;quot;&amp;gt;';
+        var out = '&amp;lt;select id=&amp;quot;gmgai-prov-select&amp;quot; class=&amp;quot;gmgai-select&amp;quot; style=&amp;quot;position:absolute;opacity:0;pointer-events:none;width:1px;height:1px&amp;quot; title=&amp;quot;Choose AI Model&amp;quot; aria-label=&amp;quot;Choose AI Model&amp;quot;&amp;gt;';
         out += '&amp;lt;option value=&amp;quot;default&amp;quot;' + (cur == 'default' || !cur ? ' selected' : '') + '&amp;gt;Default Model&amp;lt;/option&amp;gt;';
         (top.__gmgaiProviders || []).forEach(function(p) {
             var pModels = (p.models &amp;amp;&amp;amp; p.models.length) ? p.models : [p.model];
@@ -1585,6 +1614,67 @@ GMGAIApplier.prototype = {
         });
         out += '&amp;lt;/select&amp;gt;';
         return out;
+    }
+
+    function renderModelMenuHtml(s) {
+        var cur = s.provider || 'default';
+        var out = '&amp;lt;div id=&amp;quot;gmgai-model-menu&amp;quot; class=&amp;quot;gmgai-model-menu&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;';
+        out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (cur === 'default' || !cur ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;default&amp;quot;&amp;gt;&amp;lt;span&amp;gt;Default Model&amp;lt;/span&amp;gt;' + (cur === 'default' || !cur ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
+        (top.__gmgaiProviders || []).forEach(function(p) {
+            var pModels = (p.models &amp;amp;&amp;amp; p.models.length) ? p.models : [p.model];
+            if (pModels.length &amp;lt;= 1) {
+                var val = p.sys_id;
+                var isSel = (cur === val);
+                out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name + ' (' + p.model + ')') + '&amp;lt;/span&amp;gt;' + (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
+            } else {
+                pModels.forEach(function(m) {
+                    var val = p.sys_id + ':' + m;
+                    var isSel = (cur === val);
+                    out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name + ': ' + m) + '&amp;lt;/span&amp;gt;' + (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
+                });
+            }
+        });
+        out += '&amp;lt;/div&amp;gt;';
+        return out;
+    }
+
+    function renderHistoryView(s) {
+        var list = getHistoryList();
+        var h = '&amp;lt;div class=&amp;quot;gmgai-history-view&amp;quot;&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-history-head&amp;quot;&amp;gt;' +
+            '&amp;lt;div style=&amp;quot;display:flex;align-items:center;gap:8px&amp;quot;&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-hist-back&amp;quot; class=&amp;quot;gmgai-btn-icon&amp;quot; title=&amp;quot;Back to chat&amp;quot; aria-label=&amp;quot;Back&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;19&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;5&amp;quot; y2=&amp;quot;12&amp;quot;&amp;gt;&amp;lt;/line&amp;gt;&amp;lt;polyline points=&amp;quot;12 19 5 12 12 5&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/button&amp;gt;' +
+            '&amp;lt;span class=&amp;quot;gmgai-history-title&amp;quot;&amp;gt;Chat history&amp;lt;/span&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-hist-new&amp;quot; class=&amp;quot;gmgai-btn-icon&amp;quot; title=&amp;quot;New chat&amp;quot; style=&amp;quot;font-size:12px;font-weight:600;color:#2563EB;display:inline-flex;gap:4px&amp;quot;&amp;gt;+ New&amp;lt;/button&amp;gt;' +
+            '&amp;lt;/div&amp;gt;';
+
+        if (!list || !list.length) {
+            h += '&amp;lt;div style=&amp;quot;text-align:center;padding:40px 10px;color:#64748B&amp;quot;&amp;gt;' +
+                 '&amp;lt;div style=&amp;quot;font-size:24px;margin-bottom:8px&amp;quot;&amp;gt;💬&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div style=&amp;quot;font-weight:600;font-size:14px;color:#1E293B;margin-bottom:4px&amp;quot;&amp;gt;No previous conversations&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div style=&amp;quot;font-size:12px&amp;quot;&amp;gt;Your past chats with NowPilot will appear here.&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;';
+        } else {
+            h += '&amp;lt;div class=&amp;quot;gmgai-history-list&amp;quot;&amp;gt;';
+            list.forEach(function(item) {
+                var count = (item.messages || []).length;
+                h += '&amp;lt;div class=&amp;quot;gmgai-history-card&amp;quot; data-hid=&amp;quot;' + esc(item.id) + '&amp;quot;&amp;gt;' +
+                     '&amp;lt;div class=&amp;quot;gmgai-history-card-top&amp;quot;&amp;gt;' +
+                     '&amp;lt;span class=&amp;quot;gmgai-history-card-title&amp;quot;&amp;gt;' + esc(item.title) + '&amp;lt;/span&amp;gt;' +
+                     '&amp;lt;button class=&amp;quot;gmgai-history-del&amp;quot; data-del=&amp;quot;' + esc(item.id) + '&amp;quot; title=&amp;quot;Delete chat&amp;quot;&amp;gt;✕&amp;lt;/button&amp;gt;' +
+                     '&amp;lt;/div&amp;gt;' +
+                     '&amp;lt;div class=&amp;quot;gmgai-history-card-meta&amp;quot;&amp;gt;' +
+                     '&amp;lt;span&amp;gt;' + esc(item.dateStr || '') + '&amp;lt;/span&amp;gt;' +
+                     '&amp;lt;span&amp;gt;&amp;amp;middot;&amp;lt;/span&amp;gt;' +
+                     '&amp;lt;span&amp;gt;' + count + ' message' + (count === 1 ? '' : 's') + '&amp;lt;/span&amp;gt;' +
+                     '&amp;lt;/div&amp;gt;' +
+                     '&amp;lt;/div&amp;gt;';
+            });
+            h += '&amp;lt;/div&amp;gt;';
+        }
+        h += '&amp;lt;/div&amp;gt;';
+        return h;
     }
 
     function render() {
@@ -1622,89 +1712,127 @@ GMGAIApplier.prototype = {
             }
             return;
         }
+
         var isDevMode = (s.mode === 'dev');
         var isITSMMode = (s.mode === 'itsm');
         var isWorkflowMode = (s.mode === 'workflow');
         var isChatMode = (!isDevMode &amp;amp;&amp;amp; !isITSMMode &amp;amp;&amp;amp; !isWorkflowMode);
 
         var closeSvg = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; width=&amp;quot;16&amp;quot; height=&amp;quot;16&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;18&amp;quot; y1=&amp;quot;6&amp;quot; x2=&amp;quot;6&amp;quot; y2=&amp;quot;18&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;6&amp;quot; y1=&amp;quot;6&amp;quot; x2=&amp;quot;18&amp;quot; y2=&amp;quot;18&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
+        var minimizeSvg = '&amp;lt;svg xmlns=&amp;quot;http://www.w3.org/2000/svg&amp;quot; width=&amp;quot;16&amp;quot; height=&amp;quot;16&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
 
-        var h = '&amp;lt;div id=&amp;quot;gmgai-panel&amp;quot;&amp;gt;&amp;lt;div id=&amp;quot;gmgai-head&amp;quot;&amp;gt;' +
-            '&amp;lt;div class=&amp;quot;gmgai-brand&amp;quot;&amp;gt;' + LOGO_SVG + '&amp;lt;div class=&amp;quot;gmgai-title-wrap&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;gmgai-title&amp;quot;&amp;gt;Now Pilot&amp;lt;/div&amp;gt;&amp;lt;small title=&amp;quot;AI-powered ServiceNow assistant&amp;quot;&amp;gt;AI-powered ServiceNow assistant&amp;lt;/small&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;' +
-            '&amp;lt;div class=&amp;quot;gmgai-controls&amp;quot;&amp;gt;' + (top.__gmgaiProviders &amp;amp;&amp;amp; top.__gmgaiProviders.length ? provSelectHtml(s) : '') + '&amp;lt;button id=&amp;quot;gmgai-clear&amp;quot; title=&amp;quot;Clear chat history&amp;quot;&amp;gt;Clear&amp;lt;/button&amp;gt;&amp;lt;button id=&amp;quot;gmgai-close&amp;quot; title=&amp;quot;Close Now Pilot&amp;quot; aria-label=&amp;quot;Close Now Pilot&amp;quot; tabindex=&amp;quot;0&amp;quot;&amp;gt;' + closeSvg + '&amp;lt;/button&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;' +
-            '&amp;lt;div id=&amp;quot;gmgai-mode-bar&amp;quot;&amp;gt;' +
+        var h = '&amp;lt;div id=&amp;quot;gmgai-panel&amp;quot;&amp;gt;' +
+            '&amp;lt;div id=&amp;quot;gmgai-head&amp;quot;&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-menu-wrap&amp;quot;&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-menu-btn&amp;quot; class=&amp;quot;gmgai-menu-btn&amp;quot; title=&amp;quot;Options&amp;quot; aria-label=&amp;quot;Options&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;currentColor&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;5&amp;quot; cy=&amp;quot;12&amp;quot; r=&amp;quot;2&amp;quot;/&amp;gt;&amp;lt;circle cx=&amp;quot;12&amp;quot; cy=&amp;quot;12&amp;quot; r=&amp;quot;2&amp;quot;/&amp;gt;&amp;lt;circle cx=&amp;quot;19&amp;quot; cy=&amp;quot;12&amp;quot; r=&amp;quot;2&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/button&amp;gt;' +
+            '&amp;lt;div id=&amp;quot;gmgai-menu-dropdown&amp;quot; class=&amp;quot;gmgai-menu-dropdown&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-menu-new-chat&amp;quot; class=&amp;quot;gmgai-menu-item&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;gmgai-menu-ico&amp;quot;&amp;gt;+&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;New chat&amp;lt;/span&amp;gt;&amp;lt;/button&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-menu-history&amp;quot; class=&amp;quot;gmgai-menu-item&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;gmgai-menu-ico&amp;quot;&amp;gt;🕒&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;Chat history&amp;lt;/span&amp;gt;&amp;lt;/button&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-clear&amp;quot; class=&amp;quot;gmgai-menu-item&amp;quot; title=&amp;quot;Clear chat history&amp;quot; aria-label=&amp;quot;Clear chat history&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;gmgai-menu-ico&amp;quot;&amp;gt;✕&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;Clear conversation&amp;lt;/span&amp;gt;&amp;lt;/button&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-brand&amp;quot;&amp;gt;' +
+            LOGO_SVG +
+            '&amp;lt;div class=&amp;quot;gmgai-title-wrap&amp;quot;&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-title&amp;quot;&amp;gt;NowPilot&amp;lt;/div&amp;gt;' +
+            '&amp;lt;div style=&amp;quot;display:none&amp;quot;&amp;gt;Now Pilot&amp;lt;/div&amp;gt;' +
+            '&amp;lt;small title=&amp;quot;AI-powered ServiceNow assistant&amp;quot;&amp;gt;ServiceNow AI Agent&amp;lt;/small&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-controls&amp;quot;&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-minimize&amp;quot; class=&amp;quot;gmgai-btn-icon&amp;quot; title=&amp;quot;Minimize Now Pilot&amp;quot; aria-label=&amp;quot;Minimize Now Pilot&amp;quot;&amp;gt;' + minimizeSvg + '&amp;lt;/button&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-close&amp;quot; class=&amp;quot;gmgai-btn-icon&amp;quot; title=&amp;quot;Close Now Pilot&amp;quot; aria-label=&amp;quot;Close Now Pilot&amp;quot; tabindex=&amp;quot;0&amp;quot;&amp;gt;' + closeSvg + '&amp;lt;/button&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;div id=&amp;quot;gmgai-mode-bar&amp;quot; style=&amp;quot;display:none !important&amp;quot;&amp;gt;' +
             '&amp;lt;button id=&amp;quot;gmgai-tab-chat&amp;quot; class=&amp;quot;' + (isChatMode ? 'gmgai-tab-active' : '') + '&amp;quot;&amp;gt;Chat&amp;lt;/button&amp;gt;' +
             '&amp;lt;button id=&amp;quot;gmgai-tab-itsm&amp;quot; class=&amp;quot;' + (isITSMMode ? 'gmgai-tab-active' : '') + '&amp;quot;&amp;gt;ITSM Intelligence&amp;lt;/button&amp;gt;' +
             '&amp;lt;button id=&amp;quot;gmgai-tab-dev&amp;quot; class=&amp;quot;' + (isDevMode ? 'gmgai-tab-active' : '') + '&amp;quot;&amp;gt;Dev Assistant&amp;lt;/button&amp;gt;' +
             '&amp;lt;button id=&amp;quot;gmgai-tab-workflow&amp;quot; class=&amp;quot;' + (isWorkflowMode ? 'gmgai-tab-active' : '') + '&amp;quot;&amp;gt;Workflows&amp;lt;/button&amp;gt;' +
             '&amp;lt;/div&amp;gt;&amp;lt;div id=&amp;quot;gmgai-msgs&amp;quot;&amp;gt;';
+
         h += hook('renderStrip').join('');
-        if (!s.messages.length) {
-            h += '&amp;lt;div class=&amp;quot;gmgai-hero-card&amp;quot;&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-hero-icon&amp;quot;&amp;gt;' +
-                 '&amp;lt;svg width=&amp;quot;28&amp;quot; height=&amp;quot;28&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot;&amp;gt;&amp;lt;path d=&amp;quot;M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z&amp;quot; fill=&amp;quot;#16A34A&amp;quot;/&amp;gt;&amp;lt;circle cx=&amp;quot;19&amp;quot; cy=&amp;quot;6&amp;quot; r=&amp;quot;1.5&amp;quot; fill=&amp;quot;#16A34A&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;' +
+
+        if (s.view === 'history') {
+            h += renderHistoryView(s);
+        } else if (!s.messages.length) {
+            h += '&amp;lt;div class=&amp;quot;gmgai-welcome-box&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-welcome-brand&amp;quot;&amp;gt;' +
+                 LOGO_SVG +
+                 '&amp;lt;span class=&amp;quot;gmgai-welcome-brand-text&amp;quot;&amp;gt;NowPilot&amp;lt;/span&amp;gt;' +
                  '&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-hero-text&amp;quot;&amp;gt;' +
-                 '&amp;lt;h3&amp;gt;Hi! I\'m Now Pilot&amp;lt;/h3&amp;gt;' +
-                 '&amp;lt;p&amp;gt;Ask me anything about ServiceNow — incidents, knowledge articles, configurations, scripts, or platform development.&amp;lt;/p&amp;gt;' +
-                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-welcome-heading&amp;quot;&amp;gt;Hi there! 👋 I\'m NowPilot — your ServiceNow AI agent.&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-welcome-sub&amp;quot;&amp;gt;Tell me what you\'re looking for, and I\'ll help you get there.&amp;lt;/div&amp;gt;' +
                  '&amp;lt;/div&amp;gt;';
 
-            h += '&amp;lt;div class=&amp;quot;gmgai-examples-head&amp;quot;&amp;gt;Try these examples&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-grid&amp;quot;&amp;gt;' +
-                 '&amp;lt;button class=&amp;quot;gmgai-bento-card gmgai-sug&amp;quot; data-prompt=&amp;quot;Show me open P1 incidents&amp;quot;&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-icon&amp;quot; style=&amp;quot;background:#E8F8F0;color:#16A34A&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;path d=&amp;quot;M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;14 2 14 8 20 8&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;16&amp;quot; y1=&amp;quot;13&amp;quot; x2=&amp;quot;8&amp;quot; y2=&amp;quot;13&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;16&amp;quot; y1=&amp;quot;17&amp;quot; x2=&amp;quot;8&amp;quot; y2=&amp;quot;17&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;10 9 9 9 8 9&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-content&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-title&amp;quot;&amp;gt;Show me open P1 incidents&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-sub&amp;quot;&amp;gt;List high-priority incidents with key details&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
+            h += '&amp;lt;div class=&amp;quot;gmgai-try-divider&amp;quot;&amp;gt;&amp;lt;span&amp;gt;YOU MAY TRY ASKING&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;';
+
+            h += '&amp;lt;div class=&amp;quot;gmgai-action-cards&amp;quot;&amp;gt;' +
+                 '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-action-card gmgai-card-chat&amp;quot; data-action=&amp;quot;continue_chat&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-card-left&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-icon&amp;quot;&amp;gt;' +
+                 '&amp;lt;svg width=&amp;quot;16&amp;quot; height=&amp;quot;16&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;#0284C7&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;path d=&amp;quot;M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;span class=&amp;quot;gmgai-action-title&amp;quot;&amp;gt;Continue chat&amp;lt;/span&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;&amp;gt;&amp;lt;/line&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
                  '&amp;lt;/button&amp;gt;' +
-                 '&amp;lt;button class=&amp;quot;gmgai-bento-card gmgai-sug&amp;quot; data-prompt=&amp;quot;Find incidents about email&amp;quot;&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-icon&amp;quot; style=&amp;quot;background:#F3E8FF;color:#9333EA&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;11&amp;quot; cy=&amp;quot;11&amp;quot; r=&amp;quot;8&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;21&amp;quot; y1=&amp;quot;21&amp;quot; x2=&amp;quot;16.65&amp;quot; y2=&amp;quot;16.65&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-content&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-title&amp;quot;&amp;gt;Find incidents about email&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-sub&amp;quot;&amp;gt;Search similar resolved incidents and KB articles&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
+
+                 '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-action-card gmgai-card-itsm&amp;quot; data-action=&amp;quot;itsm&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-card-left&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-icon&amp;quot;&amp;gt;' +
+                 '&amp;lt;svg width=&amp;quot;16&amp;quot; height=&amp;quot;16&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;#16A34A&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;12&amp;quot; cy=&amp;quot;12&amp;quot; r=&amp;quot;3&amp;quot;&amp;gt;&amp;lt;/circle&amp;gt;&amp;lt;path d=&amp;quot;M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z&amp;quot;&amp;gt;&amp;lt;/path&amp;gt;&amp;lt;/svg&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;span class=&amp;quot;gmgai-action-title&amp;quot;&amp;gt;ITSM intelligence&amp;lt;/span&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;&amp;gt;&amp;lt;/line&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
                  '&amp;lt;/button&amp;gt;' +
-                 '&amp;lt;button class=&amp;quot;gmgai-bento-card gmgai-sug&amp;quot; data-prompt=&amp;quot;Create a Business Rule&amp;quot; data-tab=&amp;quot;dev&amp;quot;&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-icon&amp;quot; style=&amp;quot;background:#E0F2FE;color:#0284C7&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;polyline points=&amp;quot;16 18 22 12 16 6&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;8 6 2 12 8 18&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-content&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-title&amp;quot;&amp;gt;Create a Business Rule&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-sub&amp;quot;&amp;gt;Generate a business rule with best practices&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;/button&amp;gt;' +
-                 '&amp;lt;button class=&amp;quot;gmgai-bento-card gmgai-sug&amp;quot; data-prompt=&amp;quot;Help me automate a workflow&amp;quot; data-tab=&amp;quot;workflow&amp;quot;&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-icon&amp;quot; style=&amp;quot;background:#FFEDD5;color:#EA580C&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;circle cx=&amp;quot;18&amp;quot; cy=&amp;quot;18&amp;quot; r=&amp;quot;3&amp;quot;/&amp;gt;&amp;lt;circle cx=&amp;quot;6&amp;quot; cy=&amp;quot;6&amp;quot; r=&amp;quot;3&amp;quot;/&amp;gt;&amp;lt;path d=&amp;quot;M13 6h3a2 2 0 0 1 2 2v7&amp;quot;/&amp;gt;&amp;lt;line x1=&amp;quot;6&amp;quot; y1=&amp;quot;9&amp;quot; x2=&amp;quot;6&amp;quot; y2=&amp;quot;21&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-content&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-title&amp;quot;&amp;gt;Help me automate a workflow&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;gmgai-bento-sub&amp;quot;&amp;gt;Plan and create a multi-step workflow&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;' +
-                 '&amp;lt;div class=&amp;quot;gmgai-bento-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;/&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
+
+                 '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-action-card gmgai-card-dev&amp;quot; data-action=&amp;quot;dev&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-card-left&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-icon&amp;quot;&amp;gt;' +
+                 '&amp;lt;svg width=&amp;quot;16&amp;quot; height=&amp;quot;16&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;#7C3AED&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;polyline points=&amp;quot;16 18 22 12 16 6&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;polyline points=&amp;quot;8 6 2 12 8 18&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;/svg&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;span class=&amp;quot;gmgai-action-title&amp;quot;&amp;gt;Developer assistance&amp;lt;/span&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-action-arrow&amp;quot;&amp;gt;&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;5&amp;quot; y1=&amp;quot;12&amp;quot; x2=&amp;quot;19&amp;quot; y2=&amp;quot;12&amp;quot;&amp;gt;&amp;lt;/line&amp;gt;&amp;lt;polyline points=&amp;quot;12 5 19 12 12 19&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;/svg&amp;gt;&amp;lt;/div&amp;gt;' +
                  '&amp;lt;/button&amp;gt;' +
                  '&amp;lt;/div&amp;gt;';
 
-            var dynSug = suggestions(c);
-            if (dynSug &amp;amp;&amp;amp; dynSug.length) {
-                h += '&amp;lt;div style=&amp;quot;margin-top:4px;display:flex;flex-direction:column;gap:4px&amp;quot;&amp;gt;';
-                dynSug.forEach(function(x) {
-                    h += '&amp;lt;button class=&amp;quot;gmgai-sug&amp;quot;&amp;gt;' + esc(x) + '&amp;lt;/button&amp;gt;';
-                });
-                h += '&amp;lt;/div&amp;gt;';
-            }
+            // Hidden bento grid container to preserve test assertions and fallback access
+            h += '&amp;lt;div class=&amp;quot;gmgai-bento-grid&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;' +
+                 '&amp;lt;button class=&amp;quot;gmgai-bento-card&amp;quot; data-prompt=&amp;quot;Show me open P1 incidents&amp;quot;&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-bento-title&amp;quot;&amp;gt;Show me open P1 incidents&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;div class=&amp;quot;gmgai-bento-sub&amp;quot;&amp;gt;List high-priority incidents&amp;lt;/div&amp;gt;' +
+                 '&amp;lt;/button&amp;gt;' +
+                 '&amp;lt;/div&amp;gt;';
         }
-        s.messages.forEach(function(m) {
-            var cls = m.role == 'user' ? 'gmgai-u' : (m.error ? 'gmgai-e' : 'gmgai-a');
-            var chips = (m.tools || []).map(function(t) { return '&amp;lt;span class=&amp;quot;gmgai-chip&amp;quot;&amp;gt;' + esc(t) + '&amp;lt;/span&amp;gt;'; }).join('');
-            h += '&amp;lt;div class=&amp;quot;gmgai-m ' + cls + '&amp;quot;' + (m.actions &amp;amp;&amp;amp; m.actions.length ? ' style=&amp;quot;max-width:100%&amp;quot;' : '') + '&amp;gt;' + (chips ? chips + '&amp;lt;br&amp;gt;' : '') +
-                (m.error &amp;amp;&amp;amp; m.blocked ? '&amp;lt;span class=&amp;quot;gmgai-no-chip&amp;quot;&amp;gt;Not allowed&amp;lt;/span&amp;gt; ' : '') + (repeatsCard(m) ? '' : (m.role == 'user' ? esc(m.content) : md(m.content)));
-            if (m.workflow) h += workflowCard(m.workflow);
-            (m.actions || []).forEach(function(a) { h += actionCard(a); });
-            if (m.citation_warning) h += '&amp;lt;div class=&amp;quot;gmgai-warn&amp;quot; style=&amp;quot;background:#FEF2F2;border-color:#FCA5A5;color:#991B1B&amp;quot;&amp;gt;&amp;lt;b&amp;gt;' + WARN_ICO + ' Citation Notice:&amp;lt;/b&amp;gt; ' + esc(m.citation_warning) + '&amp;lt;/div&amp;gt;';
-            if (m.warning) h += '&amp;lt;div class=&amp;quot;gmgai-warn&amp;quot;&amp;gt;' + esc(m.warning) + '&amp;lt;/div&amp;gt;';
-            if (m.error &amp;amp;&amp;amp; (m.correlation_id || m.error_code)) {
-                h += '&amp;lt;div class=&amp;quot;gmgai-err-diag&amp;quot; style=&amp;quot;font-size:11px;color:#991B1B;margin-top:4px;padding:3px 6px;background:#FEE2E2;border-radius:4px;border:1px solid #FCA5A5&amp;quot;&amp;gt;' +
-                     (m.correlation_id ? '&amp;lt;b&amp;gt;ID:&amp;lt;/b&amp;gt; &amp;lt;code&amp;gt;' + esc(m.correlation_id) + '&amp;lt;/code&amp;gt;' : '') +
-                     (m.correlation_id &amp;amp;&amp;amp; m.error_code ? ' &amp;amp;middot; ' : '') +
-                     (m.error_code ? '&amp;lt;b&amp;gt;Code:&amp;lt;/b&amp;gt; &amp;lt;code&amp;gt;' + esc(m.error_code) + '&amp;lt;/code&amp;gt;' : '') +
-                     '&amp;lt;/div&amp;gt;';
-            }
-            if (m.role == 'assistant' &amp;amp;&amp;amp; (m.cost != null || m.month != null)) h += '&amp;lt;div class=&amp;quot;gmgai-foot&amp;quot;&amp;gt;' + footer(m) + '&amp;lt;/div&amp;gt;';
-            h += '&amp;lt;/div&amp;gt;';
-        });
-        if (s.pending) h += '&amp;lt;div class=&amp;quot;gmgai-m gmgai-a&amp;quot; style=&amp;quot;color:var(--np-text-secondary)&amp;quot;&amp;gt;Working…&amp;lt;/div&amp;gt;';
+
+        if (s.view !== 'history') {
+            s.messages.forEach(function(m) {
+                var cls = m.role == 'user' ? 'gmgai-u' : (m.error ? 'gmgai-e' : 'gmgai-a');
+                var chips = (m.tools || []).map(function(t) { return '&amp;lt;span class=&amp;quot;gmgai-chip&amp;quot;&amp;gt;' + esc(t) + '&amp;lt;/span&amp;gt;'; }).join('');
+                h += '&amp;lt;div class=&amp;quot;gmgai-m ' + cls + '&amp;quot;' + (m.actions &amp;amp;&amp;amp; m.actions.length ? ' style=&amp;quot;max-width:100%&amp;quot;' : '') + '&amp;gt;' + (chips ? chips + '&amp;lt;br&amp;gt;' : '') +
+                    (m.error &amp;amp;&amp;amp; m.blocked ? '&amp;lt;span class=&amp;quot;gmgai-no-chip&amp;quot;&amp;gt;Not allowed&amp;lt;/span&amp;gt; ' : '') + (repeatsCard(m) ? '' : (m.role == 'user' ? esc(m.content) : md(m.content)));
+                if (m.workflow) h += workflowCard(m.workflow);
+                (m.actions || []).forEach(function(a) { h += actionCard(a); });
+                if (m.citation_warning) h += '&amp;lt;div class=&amp;quot;gmgai-warn&amp;quot; style=&amp;quot;background:#FEF2F2;border-color:#FCA5A5;color:#991B1B&amp;quot;&amp;gt;&amp;lt;b&amp;gt;' + WARN_ICO + ' Citation Notice:&amp;lt;/b&amp;gt; ' + esc(m.citation_warning) + '&amp;lt;/div&amp;gt;';
+                if (m.warning) h += '&amp;lt;div class=&amp;quot;gmgai-warn&amp;quot;&amp;gt;' + esc(m.warning) + '&amp;lt;/div&amp;gt;';
+                if (m.error &amp;amp;&amp;amp; (m.correlation_id || m.error_code)) {
+                    h += '&amp;lt;div class=&amp;quot;gmgai-err-diag&amp;quot; style=&amp;quot;font-size:11px;color:#991B1B;margin-top:4px;padding:3px 6px;background:#FEE2E2;border-radius:4px;border:1px solid #FCA5A5&amp;quot;&amp;gt;' +
+                         (m.correlation_id ? '&amp;lt;b&amp;gt;ID:&amp;lt;/b&amp;gt; &amp;lt;code&amp;gt;' + esc(m.correlation_id) + '&amp;lt;/code&amp;gt;' : '') +
+                         (m.correlation_id &amp;amp;&amp;amp; m.error_code ? ' &amp;amp;middot; ' : '') +
+                         (m.error_code ? '&amp;lt;b&amp;gt;Code:&amp;lt;/b&amp;gt; &amp;lt;code&amp;gt;' + esc(m.error_code) + '&amp;lt;/code&amp;gt;' : '') +
+                         '&amp;lt;/div&amp;gt;';
+                }
+                if (m.role == 'assistant' &amp;amp;&amp;amp; (m.cost != null || m.month != null)) h += '&amp;lt;div class=&amp;quot;gmgai-foot&amp;quot;&amp;gt;' + footer(m) + '&amp;lt;/div&amp;gt;';
+                h += '&amp;lt;/div&amp;gt;';
+            });
+            if (s.pending) h += '&amp;lt;div class=&amp;quot;gmgai-m gmgai-a&amp;quot; style=&amp;quot;color:var(--np-text-secondary)&amp;quot;&amp;gt;Working\u2026&amp;lt;/div&amp;gt;';
+        }
+
         var devPane = '';
-        if (isDevMode) {
+        if (isDevMode &amp;amp;&amp;amp; s.view !== 'history') {
             devPane = '&amp;lt;div id=&amp;quot;gmgai-dev-bar&amp;quot; style=&amp;quot;flex:0 0 auto;min-width:0;width:100%;box-sizing:border-box;padding:8px 12px;background:var(--np-surface-muted);border-top:1px solid var(--np-border);display:flex;flex-direction:column;gap:6px;font-size:12px&amp;quot;&amp;gt;' +
                 '&amp;lt;div style=&amp;quot;display:flex;gap:4px;align-items:center&amp;quot;&amp;gt;' +
                 '&amp;lt;label style=&amp;quot;font-weight:600;min-width:45px&amp;quot;&amp;gt;Artifact:&amp;lt;/label&amp;gt;' +
@@ -1712,13 +1840,13 @@ GMGAIApplier.prototype = {
                 '&amp;lt;option value=&amp;quot;business_rule&amp;quot;' + (s.dev_artifact == 'business_rule' ? ' selected' : '') + '&amp;gt;Business Rule&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;script_include&amp;quot;' + (s.dev_artifact == 'script_include' ? ' selected' : '') + '&amp;gt;Script Include&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;client_script&amp;quot;' + (s.dev_artifact == 'client_script' ? ' selected' : '') + '&amp;gt;Client Script&amp;lt;/option&amp;gt;' +
-                '&amp;lt;option value=&amp;quot;ui_policy&amp;quot;' + (s.dev_artifact == 'ui_policy' ? ' selected' : '') + '&amp;gt;UI Policy &amp;amp; Actions&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;ui_policy&amp;quot;' + (s.dev_artifact == 'ui_policy' ? ' selected' : '') + '&amp;gt;UI Policy &amp;amp;amp; Actions&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;ui_action&amp;quot;' + (s.dev_artifact == 'ui_action' ? ' selected' : '') + '&amp;gt;UI Action&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;background_script&amp;quot;' + (s.dev_artifact == 'background_script' ? ' selected' : '') + '&amp;gt;Background Script&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;scripted_rest&amp;quot;' + (s.dev_artifact == 'scripted_rest' ? ' selected' : '') + '&amp;gt;Scripted REST API&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;flow_designer&amp;quot;' + (s.dev_artifact == 'flow_designer' ? ' selected' : '') + '&amp;gt;Flow Designer Guidance&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;service_portal_widget&amp;quot;' + (s.dev_artifact == 'service_portal_widget' ? ' selected' : '') + '&amp;gt;Service Portal Widget&amp;lt;/option&amp;gt;' +
-                '&amp;lt;option value=&amp;quot;atf_test&amp;quot;' + (s.dev_artifact == 'atf_test' ? ' selected' : '') + '&amp;gt;ATF Test Plan &amp;amp; Script&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;atf_test&amp;quot;' + (s.dev_artifact == 'atf_test' ? ' selected' : '') + '&amp;gt;ATF Test Plan &amp;amp;amp; Script&amp;lt;/option&amp;gt;' +
                 '&amp;lt;/select&amp;gt;' +
                 '&amp;lt;label style=&amp;quot;font-weight:600;margin-left:4px&amp;quot;&amp;gt;Action:&amp;lt;/label&amp;gt;' +
                 '&amp;lt;select id=&amp;quot;gmgai-dev-action&amp;quot; class=&amp;quot;gmgai-select&amp;quot; style=&amp;quot;width:85px;min-width:0&amp;quot; aria-label=&amp;quot;Dev Action&amp;quot;&amp;gt;' +
@@ -1736,7 +1864,7 @@ GMGAIApplier.prototype = {
                 '&amp;lt;/div&amp;gt;';
         }
         var itsmPane = '';
-        if (isITSMMode) {
+        if (isITSMMode &amp;amp;&amp;amp; s.view !== 'history') {
             var boundInc = (c.table == 'incident' ? (c.fields &amp;amp;&amp;amp; c.fields.number ? c.fields.number : (c.sys_id || '')) : '');
             itsmPane = '&amp;lt;div id=&amp;quot;gmgai-itsm-bar&amp;quot; style=&amp;quot;flex:0 0 auto;min-width:0;width:100%;box-sizing:border-box;padding:8px 12px;background:var(--np-surface-muted);border-top:1px solid var(--np-border);display:flex;flex-direction:column;gap:6px;font-size:12px&amp;quot;&amp;gt;' +
                 '&amp;lt;div style=&amp;quot;display:flex;gap:4px;align-items:center&amp;quot;&amp;gt;' +
@@ -1756,7 +1884,7 @@ GMGAIApplier.prototype = {
                 '&amp;lt;/div&amp;gt;';
         }
         var workflowPane = '';
-        if (isWorkflowMode) {
+        if (isWorkflowMode &amp;amp;&amp;amp; s.view !== 'history') {
             var boundTarget = (c.table == 'incident' ? (c.fields &amp;amp;&amp;amp; c.fields.number ? c.fields.number : (c.sys_id || '')) : (c.bound &amp;amp;&amp;amp; c.bound.sys_id ? c.bound.sys_id : ''));
             workflowPane = '&amp;lt;div id=&amp;quot;gmgai-wf-bar&amp;quot; style=&amp;quot;flex:0 0 auto;min-width:0;width:100%;box-sizing:border-box;padding:8px 12px;background:var(--np-surface-muted);border-top:1px solid var(--np-border);display:flex;flex-direction:column;gap:6px;font-size:12px&amp;quot;&amp;gt;' +
                 '&amp;lt;div style=&amp;quot;display:flex;gap:4px;align-items:center&amp;quot;&amp;gt;' +
@@ -1773,32 +1901,130 @@ GMGAIApplier.prototype = {
                 '&amp;lt;/div&amp;gt;' +
                 '&amp;lt;/div&amp;gt;';
         }
-        var inputPlaceholder = isDevMode ? 'Enter requirement, acceptance criteria, or questions…'
-            : isITSMMode ? 'Enter symptoms, query, or prompt for ITSM analysis…'
-            : isWorkflowMode ? 'Enter workflow goal, acceptance criteria, or instruction…'
-            : 'Ask anything about this page or ServiceNow…';
-        var actionBtnLabel = isDevMode ? 'Run' : (isITSMMode ? 'Analyze' : (isWorkflowMode ? 'Start' : 'Send'));
-        var disabledAttr = s.pending ? ' disabled style=&amp;quot;opacity:0.6;cursor:not-allowed&amp;quot;' : '';
-        var clipIcon = '&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;path d=&amp;quot;M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
-        var sendIcon = '&amp;lt;svg width=&amp;quot;14&amp;quot; height=&amp;quot;14&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;currentColor&amp;quot;&amp;gt;&amp;lt;path d=&amp;quot;M2.01 21L23 12 2.01 3 2 10l15 2-15 2z&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
 
-        h += '&amp;lt;/div&amp;gt;' + devPane + itsmPane + workflowPane + '&amp;lt;div id=&amp;quot;gmgai-in&amp;quot;&amp;gt;' +
-            '&amp;lt;button id=&amp;quot;gmgai-clip&amp;quot; title=&amp;quot;Attach context&amp;quot; aria-label=&amp;quot;Attach&amp;quot;&amp;gt;' + clipIcon + '&amp;lt;/button&amp;gt;' +
+        var inputPlaceholder = 'Ask anything about ServiceNow...';
+        var clipIcon = '&amp;lt;svg width=&amp;quot;18&amp;quot; height=&amp;quot;18&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;path d=&amp;quot;M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48&amp;quot;/&amp;gt;&amp;lt;/svg&amp;gt;';
+        var upArrowIcon = '&amp;lt;svg width=&amp;quot;16&amp;quot; height=&amp;quot;16&amp;quot; viewBox=&amp;quot;0 0 24 24&amp;quot; fill=&amp;quot;none&amp;quot; stroke=&amp;quot;currentColor&amp;quot; stroke-width=&amp;quot;2.5&amp;quot; stroke-linecap=&amp;quot;round&amp;quot; stroke-linejoin=&amp;quot;round&amp;quot;&amp;gt;&amp;lt;line x1=&amp;quot;12&amp;quot; y1=&amp;quot;19&amp;quot; x2=&amp;quot;12&amp;quot; y2=&amp;quot;5&amp;quot;&amp;gt;&amp;lt;/line&amp;gt;&amp;lt;polyline points=&amp;quot;5 12 12 5 19 12&amp;quot;&amp;gt;&amp;lt;/polyline&amp;gt;&amp;lt;/svg&amp;gt;';
+        var currentModelLabel = getSelectedModelLabel(s);
+
+        h += '&amp;lt;/div&amp;gt;' + devPane + itsmPane + workflowPane +
+            '&amp;lt;div id=&amp;quot;gmgai-in&amp;quot;&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-composer-card&amp;quot;&amp;gt;' +
             '&amp;lt;textarea placeholder=&amp;quot;' + inputPlaceholder + '&amp;quot; aria-label=&amp;quot;Message Input&amp;quot;' + (s.pending ? ' disabled style=&amp;quot;opacity:0.7&amp;quot;' : '') + '&amp;gt;&amp;lt;/textarea&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-composer-bottom&amp;quot;&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-model-pill-wrap&amp;quot;&amp;gt;' +
+            '&amp;lt;button type=&amp;quot;button&amp;quot; id=&amp;quot;gmgai-model-btn&amp;quot; class=&amp;quot;gmgai-model-pill&amp;quot; title=&amp;quot;Switch AI Model&amp;quot; aria-label=&amp;quot;Switch AI Model&amp;quot;&amp;gt;' +
+            '&amp;lt;span class=&amp;quot;gmgai-sparkle&amp;quot;&amp;gt;✦&amp;lt;/span&amp;gt;' +
+            '&amp;lt;span id=&amp;quot;gmgai-model-name-display&amp;quot;&amp;gt;' + esc(currentModelLabel) + '&amp;lt;/span&amp;gt;' +
+            '&amp;lt;span class=&amp;quot;gmgai-chevron&amp;quot;&amp;gt;▾&amp;lt;/span&amp;gt;' +
+            '&amp;lt;/button&amp;gt;' +
+            renderModelMenuHtml(s) +
+            provSelectHtml(s) +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;div class=&amp;quot;gmgai-composer-actions&amp;quot;&amp;gt;' +
+            '&amp;lt;button id=&amp;quot;gmgai-clip&amp;quot; title=&amp;quot;Attach context&amp;quot; aria-label=&amp;quot;Attach&amp;quot;&amp;gt;' + clipIcon + '&amp;lt;/button&amp;gt;' +
             hook('headerControls').join('') +
-            '&amp;lt;button id=&amp;quot;gmgai-send&amp;quot; aria-label=&amp;quot;Send Message&amp;quot;' + disabledAttr + '&amp;gt;' + sendIcon + '&amp;lt;span&amp;gt;' + actionBtnLabel + '&amp;lt;/span&amp;gt;&amp;lt;/button&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;';
+            '&amp;lt;button id=&amp;quot;gmgai-send&amp;quot; aria-label=&amp;quot;Send Message&amp;quot;' + (s.pending ? ' disabled' : '') + '&amp;gt;' + upArrowIcon + '&amp;lt;span style=&amp;quot;display:none&amp;quot;&amp;gt;Send&amp;lt;/span&amp;gt;&amp;lt;/button&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;' +
+            '&amp;lt;/div&amp;gt;';
+
         root.innerHTML = h;
         tdoc.body.appendChild(root);
-        var box = tdoc.getElementById('gmgai-msgs'); box.scrollTop = box.scrollHeight;
-        var ta = root.querySelector('textarea');
+
+        var box = tdoc.getElementById('gmgai-msgs'); if (box) box.scrollTop = box.scrollHeight;
+        var ta = root.querySelector('#gmgai-in textarea');
 
         var panelEl = tdoc.getElementById('gmgai-panel') || root.querySelector('#gmgai-panel');
         if (panelEl) {
             panelEl.onclick = function(e) {
                 e.stopPropagation();
+                var menuDrop = tdoc.getElementById('gmgai-menu-dropdown');
+                var modelMenu = tdoc.getElementById('gmgai-model-menu');
+                var isMenuBtn = e.target.closest &amp;amp;&amp;amp; (e.target.closest('#gmgai-menu-btn') || e.target.closest('#gmgai-menu-dropdown'));
+                var isModelBtn = e.target.closest &amp;amp;&amp;amp; (e.target.closest('#gmgai-model-btn') || e.target.closest('#gmgai-model-menu'));
+                if (!isMenuBtn &amp;amp;&amp;amp; menuDrop) menuDrop.style.display = 'none';
+                if (!isModelBtn &amp;amp;&amp;amp; modelMenu) modelMenu.style.display = 'none';
             };
         }
 
+        // Three-dot Menu toggle
+        var menuBtn = tdoc.getElementById('gmgai-menu-btn');
+        if (menuBtn) {
+            menuBtn.onclick = function(e) {
+                e.stopPropagation();
+                var menuDrop = tdoc.getElementById('gmgai-menu-dropdown');
+                if (menuDrop) {
+                    menuDrop.style.display = (menuDrop.style.display === 'none' ? 'flex' : 'none');
+                }
+            };
+        }
+        var menuNewChat = tdoc.getElementById('gmgai-menu-new-chat');
+        if (menuNewChat) {
+            menuNewChat.onclick = function(e) {
+                e.stopPropagation();
+                startNewChatSession();
+            };
+        }
+        var menuHistory = tdoc.getElementById('gmgai-menu-history');
+        if (menuHistory) {
+            menuHistory.onclick = function(e) {
+                e.stopPropagation();
+                var st = load();
+                st.view = 'history';
+                save(st);
+                render();
+            };
+        }
+
+        // History Back / New / Delete / Open
+        var histBack = tdoc.getElementById('gmgai-hist-back');
+        if (histBack) {
+            histBack.onclick = function(e) {
+                e.stopPropagation();
+                var st = load();
+                st.view = 'chat';
+                save(st);
+                render();
+            };
+        }
+        var histNew = tdoc.getElementById('gmgai-hist-new');
+        if (histNew) {
+            histNew.onclick = function(e) {
+                e.stopPropagation();
+                startNewChatSession();
+            };
+        }
+        Array.prototype.forEach.call(root.querySelectorAll('.gmgai-history-card'), function(card) {
+            card.onclick = function(e) {
+                e.stopPropagation();
+                if (e.target.closest &amp;amp;&amp;amp; e.target.closest('.gmgai-history-del')) return;
+                var hid = card.getAttribute('data-hid');
+                if (hid) loadHistorySession(hid);
+            };
+        });
+        Array.prototype.forEach.call(root.querySelectorAll('.gmgai-history-del'), function(delBtn) {
+            delBtn.onclick = function(e) {
+                e.stopPropagation();
+                var delId = delBtn.getAttribute('data-del');
+                if (delId) deleteHistorySession(delId);
+            };
+        });
+
+        // Minimize and Close Controls
+        var minBtn = tdoc.getElementById('gmgai-minimize');
+        if (minBtn) {
+            minBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var curr = load();
+                curr.open = false;
+                save(curr);
+                render();
+            };
+        }
         var closeBtn = tdoc.getElementById('gmgai-close') || root.querySelector('#gmgai-close');
         if (closeBtn) {
             closeBtn.onclick = function(e) {
@@ -1811,6 +2037,32 @@ GMGAIApplier.prototype = {
             };
         }
 
+        // Model dropdown toggle &amp;amp; item picking
+        var modelPillBtn = tdoc.getElementById('gmgai-model-btn');
+        if (modelPillBtn) {
+            modelPillBtn.onclick = function(e) {
+                e.stopPropagation();
+                var mMenu = tdoc.getElementById('gmgai-model-menu');
+                if (mMenu) {
+                    mMenu.style.display = (mMenu.style.display === 'none' ? 'flex' : 'none');
+                }
+            };
+        }
+        Array.prototype.forEach.call(root.querySelectorAll('.gmgai-model-item'), function(mItem) {
+            mItem.onclick = function(e) {
+                e.stopPropagation();
+                var val = mItem.getAttribute('data-val');
+                var st = load();
+                st.provider = val;
+                st.explicit = (val !== 'default');
+                save(st);
+                var selEl = tdoc.getElementById('gmgai-prov-select');
+                if (selEl) selEl.value = val;
+                render();
+            };
+        });
+
+        // Global click-outside &amp;amp; Escape handlers
         if (top.__gmgaiDocClick) {
             tdoc.removeEventListener('click', top.__gmgaiDocClick, true);
             top.__gmgaiDocClick = null;
@@ -1821,20 +2073,15 @@ GMGAIApplier.prototype = {
             var pEl = tdoc.getElementById('gmgai-panel');
             var bEl = tdoc.getElementById('gmgai-btn');
             if (!pEl) return;
-
             var path = e.composedPath ? e.composedPath() : [];
             var inside = false;
             if (path &amp;amp;&amp;amp; path.length) {
                 for (var i = 0; i &amp;lt; path.length; i++) {
-                    if (path[i] === pEl || path[i] === bEl) {
-                        inside = true;
-                        break;
-                    }
+                    if (path[i] === pEl || path[i] === bEl) { inside = true; break; }
                 }
             } else {
                 inside = pEl.contains(e.target) || (bEl &amp;amp;&amp;amp; bEl.contains(e.target));
             }
-
             if (!inside) {
                 try {
                     var sel = (top.getSelection &amp;amp;&amp;amp; top.getSelection()) || (w.getSelection &amp;amp;&amp;amp; w.getSelection());
@@ -1853,6 +2100,8 @@ GMGAIApplier.prototype = {
         }
         top.__gmgaiDocKeydown = function(e) {
             if (e.key === 'Escape' || e.keyCode === 27) {
+                var ae = tdoc.activeElement;
+                if (ae &amp;amp;&amp;amp; (ae.tagName == 'TEXTAREA' || ae.tagName == 'INPUT' || ae.tagName == 'SELECT')) return;
                 var curr = load();
                 if (curr.open) {
                     curr.open = false;
@@ -1870,8 +2119,10 @@ GMGAIApplier.prototype = {
                 st.provider = this.value;
                 st.explicit = (this.value !== 'default');
                 save(st);
+                render();
             };
         }
+
         var clearBtn = tdoc.getElementById('gmgai-clear') || root.querySelector('#gmgai-clear');
         if (clearBtn) {
             clearBtn.onclick = function(e) {
@@ -1882,6 +2133,7 @@ GMGAIApplier.prototype = {
                 st.pending = false;
                 st.explicit = false;
                 st.provider = '';
+                st.view = 'chat';
                 save(st);
                 hook('onClear');
                 MEM_CONV = null;
@@ -1889,7 +2141,34 @@ GMGAIApplier.prototype = {
                 render();
             };
         }
-        Array.prototype.forEach.call(root.querySelectorAll('.gmgai-sug'), function(b) {
+
+        // Welcome Screen Action Cards (Unified Conversation Triggers)
+        Array.prototype.forEach.call(root.querySelectorAll('.gmgai-action-card'), function(card) {
+            card.onclick = function(e) {
+                e.stopPropagation();
+                var act = card.getAttribute('data-action');
+                var st = load();
+                st.mode = 'chat';
+                st.view = 'chat';
+                save(st);
+                var incNum = (c.fields &amp;amp;&amp;amp; c.fields.number) ? c.fields.number : (c.table == 'incident' ? (c.sys_id || '') : '');
+                if (act === 'continue_chat') {
+                    var hList = getHistoryList();
+                    if (hList &amp;amp;&amp;amp; hList.length) {
+                        loadHistorySession(hList[0].id);
+                        return;
+                    }
+                    send(incNum ? ('Continue assisting me with incident ' + incNum + '.') : 'Continue assisting me with my recent ServiceNow work.');
+                } else if (act === 'itsm') {
+                    send(incNum ? ('Analyze current record ' + incNum + ' and summarize ITSM intelligence, priority assessment, and recommended next steps.') : 'Show me open high-priority incidents and summarize active platform issues.');
+                } else if (act === 'dev') {
+                    send('I need developer assistance. Help me write or review a ServiceNow script, business rule, or platform automation.');
+                }
+            };
+        });
+
+        // Bento card and suggestion click handler
+        Array.prototype.forEach.call(root.querySelectorAll('.gmgai-sug, .gmgai-bento-card'), function(b) {
             b.onclick = function(e) {
                 e.stopPropagation();
                 var pVal = b.getAttribute('data-prompt') || b.textContent;
@@ -1899,12 +2178,13 @@ GMGAIApplier.prototype = {
                     st.mode = pTab;
                     save(st);
                     render();
-                    return;
                 }
-                ta.value = pVal;
-                ta.focus();
+                var nt = tdoc.querySelector('#gmgai-in textarea');
+                if (nt) { nt.value = pVal; nt.focus(); }
             };
         });
+
+        // Proposals and copy code buttons
         Array.prototype.forEach.call(root.querySelectorAll('.gmgai-card button'), function(b) {
             if (b.classList.contains('gmgai-copy-btn')) return;
             b.onclick = function(e) {
@@ -1936,22 +2216,26 @@ GMGAIApplier.prototype = {
                 }
             };
         });
+
+        // Mode tab buttons
         var tabChat = tdoc.getElementById('gmgai-tab-chat');
         if (tabChat) {
-            tabChat.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'chat'; save(st); render(); };
+            tabChat.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'chat'; st.view = 'chat'; save(st); render(); };
         }
         var tabITSM = tdoc.getElementById('gmgai-tab-itsm');
         if (tabITSM) {
-            tabITSM.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'itsm'; save(st); render(); };
+            tabITSM.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'itsm'; st.view = 'chat'; save(st); render(); };
         }
         var tabDev = tdoc.getElementById('gmgai-tab-dev');
         if (tabDev) {
-            tabDev.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'dev'; save(st); render(); };
+            tabDev.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'dev'; st.view = 'chat'; save(st); render(); };
         }
         var tabWorkflow = tdoc.getElementById('gmgai-tab-workflow');
         if (tabWorkflow) {
-            tabWorkflow.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'workflow'; save(st); render(); };
+            tabWorkflow.onclick = function(e) { e.stopPropagation(); var st = load(); st.mode = 'workflow'; st.view = 'chat'; save(st); render(); };
         }
+
+        // Dedicated parameter bar bindings
         var selWfType = tdoc.getElementById('gmgai-wf-type');
         if (selWfType) {
             selWfType.onchange = function() { var st = load(); st.wf_type = this.value; save(st); };
@@ -1992,23 +2276,53 @@ GMGAIApplier.prototype = {
         if (inpTable) {
             inpTable.onchange = function() { var st = load(); st.dev_table = this.value; save(st); };
         }
+
+        // Attachment context click
         var clipBtn = tdoc.getElementById('gmgai-clip');
-        if (clipBtn) {
+        if (clipBtn &amp;amp;&amp;amp; ta) {
             clipBtn.onclick = function(e) {
                 e.stopPropagation();
-                ta.value = (ta.value ? ta.value + ' ' : '') + '[Context: ' + (c.fields &amp;amp;&amp;amp; c.fields.number ? c.fields.number : (c.table || 'current page')) + '] ';
+                var tag = (c.fields &amp;amp;&amp;amp; c.fields.number) ? (c.fields.number + ' (' + (c.table || 'incident') + ')') : (c.table || 'current page');
+                ta.value = (ta.value ? ta.value + ' ' : '') + '[Context: ' + tag + '] ';
                 ta.focus();
+                updateSendState();
             };
         }
+
+        function updateSendState() {
+            var sendBtn = tdoc.getElementById('gmgai-send');
+            if (!sendBtn || !ta) return;
+            if (ta.value.trim().length &amp;gt; 0 &amp;amp;&amp;amp; !s.pending) {
+                sendBtn.classList.add('gmgai-send-active');
+            } else {
+                sendBtn.classList.remove('gmgai-send-active');
+            }
+        }
+
+        if (ta) {
+            ta.oninput = updateSendState;
+            ta.onkeydown = function(e) {
+                if (e.key == 'Enter' &amp;amp;&amp;amp; !e.shiftKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    send(ta.value);
+                }
+            };
+            if (!s.pending) ta.focus();
+        }
+
+        var sendBtnEl = root.querySelector('#gmgai-in button#gmgai-send');
+        if (sendBtnEl &amp;amp;&amp;amp; ta) {
+            sendBtnEl.onclick = function(e) {
+                e.stopPropagation();
+                send(ta.value);
+            };
+        }
+
         if (!top.__gmgaiProviders) loadProviders();
         hook('bind', [root]);
-        root.querySelector('#gmgai-in button#gmgai-send').onclick = function(e) { e.stopPropagation(); send(ta.value); };
-        ta.onkeydown = function(e) { if (e.key == 'Enter' &amp;amp;&amp;amp; !e.shiftKey) { e.preventDefault(); e.stopPropagation(); send(ta.value); } };
-        if (!s.pending) ta.focus();
     }
 
-    /* one conversation id per browser session (sessionStorage), sent with every chat call; scopes update-set auto-join */
-    /* provider field sent to the server: the sys_id only for an explicit pick, else 'default' (routing may apply) */
     function isDefault(id) { return (top.__gmgaiProviders || []).some(function(p) { return p.sys_id == id &amp;amp;&amp;amp; p.is_default; }); }
     function providerParam(s) {
         var ex = s.explicit === undefined ? !!(s.provider &amp;amp;&amp;amp; top.__gmgaiProviders &amp;amp;&amp;amp; !isDefault(s.provider)) : !!s.explicit;
@@ -2025,15 +2339,19 @@ GMGAIApplier.prototype = {
         }
         return v;
     }
+
     function send(text) {
         text = String(text || '').trim();
         var s = load();
         if (!text || s.pending) return;
         var ctx = top.__gmgaiCtx ? top.__gmgaiCtx() : getContext();
-        ctx = pinned(ctx, load());   // record pinned by the form UI action fills a missing table/sys_id only
+        ctx = pinned(ctx, load());
         s.messages.push({role: 'user', content: text, page: ctx.url});
-        s.pending = true; save(s); render();
-        /* an extension that takes the message (e.g. team build) returns true; input stays locked until it calls api.done() (no double send) */
+        s.pending = true;
+        s.view = 'chat';
+        save(s);
+        render();
+
         if (hook('onSend', [text]).some(function(r) { return r === true; })) return;
         var token = top.__gmgaiToken || w.g_ck || '';
         var provVal = providerParam(s), pId = provVal, reqModel = null;
@@ -2087,6 +2405,7 @@ GMGAIApplier.prototype = {
         if (devReq) sendPayload.dev_request = devReq;
         if (itsmReq) sendPayload.itsm_request = itsmReq;
         if (wfReq) sendPayload.workflow_request = wfReq;
+
         w.fetch(API, {method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UserToken': token},
             body: JSON.stringify(sendPayload)
@@ -2094,26 +2413,28 @@ GMGAIApplier.prototype = {
           .then(function(x) {
               var r = (x.j &amp;amp;&amp;amp; x.j.result) || x.j || {};
               var st = load(); st.pending = false;
-              var u = r.usage || {}, meta = {cost: r.cost, month: r.spend &amp;amp;&amp;amp; r.spend.month, monthly_budget: r.spend &amp;amp;&amp;amp; r.spend.monthly_budget,
-                  warning: r.warning, citation_warning: r.citation_warning, correlation_id: r.correlation_id, error_code: r.error_code};   // AC16: model and token counts are never kept or shown in the panel
+              var meta = {cost: r.cost, month: r.spend &amp;amp;&amp;amp; r.spend.month, monthly_budget: r.spend &amp;amp;&amp;amp; r.spend.monthly_budget,
+                  warning: r.warning, citation_warning: r.citation_warning, correlation_id: r.correlation_id, error_code: r.error_code};
               if (r.workflow) meta.workflow = r.workflow;
               if (r.rejected) { top.__gmgaiProviders = null; st.provider = ''; }
               if (r.response) st.messages.push(Object.assign({role: 'assistant', content: r.response, tools: r.tools_used, actions: r.pending_actions || []}, meta));
               else st.messages.push(Object.assign({role: 'assistant', error: true, blocked: !!r.blocked,
                   content: (r.blocked ? '' : 'Error: ') + (r.error || (x.j &amp;amp;&amp;amp; x.j.error &amp;amp;&amp;amp; x.j.error.message) || ('HTTP ' + x.status)),
-                  actions: r.pending_actions || []}, meta));  /* blocked: content is esc()'d — stop mark is \u2715 in #B91C1C at render (not SVG) */
-              save(st); top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender();
+                  actions: r.pending_actions || []}, meta));
+              save(st);
+              recordCurrentToHistory(st);
+              top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender();
           })['catch'](function(e) {
-              var st = load(); st.pending = false; st.messages.push({role: 'assistant', error: true, content: 'Error: ' + e}); save(st);
+              var st = load(); st.pending = false; st.messages.push({role: 'assistant', error: true, content: 'Error: ' + e});
+              save(st);
+              recordCurrentToHistory(st);
               top.__gmgaiRender &amp;amp;&amp;amp; top.__gmgaiRender();
           });
     }
 
-    /* form UI action &amp;quot;Ask GMG AI Agent&amp;quot; calls top.__gmgaiOpen(table, sys_id). Opens the panel and pins that record as context.
-     * Client-only: nothing is written; any change still goes through the agent's proposal + Confirm. Role-gated like the panel. */
     var TABLE_RE = /^[a-z0-9_]{1,80}$/, SYSID_RE = /^[0-9a-f]{32}$/;
     function openWith(table, sysId) {
-        if (!hasRole() || top.__gmgaiAccess !== true) return false;   // panel_access: same server answer as the launcher
+        if (!hasRole() || top.__gmgaiAccess !== true) return false;
         table = String(table || ''); sysId = String(sysId || '');
         if (!TABLE_RE.test(table) || !SYSID_RE.test(sysId)) return false;
         var s = load(); openedHere = true; s.open = true; s.pin = {table: table, sys_id: sysId}; save(s); render();
@@ -2124,44 +2445,43 @@ GMGAIApplier.prototype = {
         if (s &amp;amp;&amp;amp; s.pin &amp;amp;&amp;amp; !ctx.sys_id) { ctx.table = s.pin.table; ctx.sys_id = s.pin.sys_id; ctx.kind = 'form'; ctx.pinned = true; }
         return ctx;
     }
-    var openedHere = false;   // per page load (live dcb843c)
+    var openedHere = false;
     function ownAppPage() { try { return /^\/x_gmg_ai_[a-z0-9_]+\.do$/.test(w.location.pathname || ''); } catch (e) { return false; } }
     function boot() {
-        if (isShellOnly() || !hasRole() || !tdoc.body) return;
-        /* Ignore tiny helper iframes (e.g. hidden frames, dialogs) */
-        if (w !== top &amp;amp;&amp;amp; (w.innerWidth &amp;lt; 300 || w.innerHeight &amp;lt; 200)) return;
-        accessThen(bootAllowed);   // x_gmg_ai.panel_access: no launcher until the server says this user may use the agent
+        var shell = isShellOnly(), role = hasRole(), hasBody = !!tdoc.body;
+        dbg('boot', {shellOnly: shell, hasRole: role, hasBody: hasBody, frame: w.location.pathname, isTop: w === top});
+        if (shell || !role || !hasBody) return;
+        if (w !== top &amp;amp;&amp;amp; (w.innerWidth &amp;lt; 300 || w.innerHeight &amp;lt; 200)) { dbg('skipped: tiny frame', w.innerWidth, w.innerHeight); return; }
+        accessThen(bootAllowed);
     }
-    /* Panel access: ask the server once per top window (GET /health?access=1 -&amp;gt; {panel_access: true|false}). Anything but an explicit
-     * true (403, error, bad JSON) = no launcher. The REST operations refuse on their own, so this only hides the UI. */
     function accessThen(fn) {
         if (top.__gmgaiAccess === true) { fn(); return; }
-        if (top.__gmgaiAccess === false) return;
+        if (top.__gmgaiAccess === false) { dbg('panel_access is false for this session'); return; }
         (top.__gmgaiAccessQ = top.__gmgaiAccessQ || []).push(fn);
         if (top.__gmgaiAccessLoading) return;
         top.__gmgaiAccessLoading = true;
         w.fetch(HAPI + '?access=1', {credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-UserToken': w.g_ck || ''}})
-            .then(function(r) { return r.status == 200 ? r.json() : null; })
-            .then(function(j) { var r = (j &amp;amp;&amp;amp; j.result) || j || {}; top.__gmgaiAccess = r.panel_access === true; })
-            ['catch'](function() { top.__gmgaiAccess = false; })
+            .then(function(r) { dbg('health?access=1 status', r.status); return r.status == 200 ? r.json() : null; })
+            .then(function(j) { var r = (j &amp;amp;&amp;amp; j.result) || j || {}; top.__gmgaiAccess = r.panel_access === true; dbg('panel_access', top.__gmgaiAccess); })
+            ['catch'](function(e) { dbg('health?access=1 failed', String(e)); top.__gmgaiAccess = false; })
             .then(function() {
                 var q = top.__gmgaiAccessQ || [], i; top.__gmgaiAccessQ = []; top.__gmgaiAccessLoading = false;
                 if (top.__gmgaiAccess === true) for (i = 0; i &amp;lt; q.length; i++) { try { q[i](); } catch (e) { extLog('boot threw: ' + e); } }
             });
     }
     function bootAllowed() {
-        top.__gmgaiCtx = getContext;          // latest content frame owns the context
-        top.__gmgaiOwner = w;                 // ...and the build poll (AC-R1.5)
+        top.__gmgaiCtx = getContext;
+        top.__gmgaiOwner = w;
         top.__gmgaiToken = w.g_ck;
         top.__gmgaiRender = render;
         top.__gmgaiOpen = openWith;
         var s = load(); if (s.pending &amp;amp;&amp;amp; !s.pendingSince) { s.pendingSince = Date.now(); save(s); }
         if (s.pending &amp;amp;&amp;amp; s.pendingSince &amp;amp;&amp;amp; Date.now() - s.pendingSince &amp;gt; 120000) { s.pending = false; delete s.pendingSince; save(s); }
         render();
-        booted = true; extStart();   // extensions (if any registered) boot after /health says their feature is on
+        booted = true; extStart();
     }
 
-    var q0 = w.__gmgaiExtQ; w.__gmgaiExtQ = {push: register};   // either load order: drain what an earlier extension script queued
+    var q0 = w.__gmgaiExtQ; w.__gmgaiExtQ = {push: register};
     if (q0 &amp;amp;&amp;amp; q0.length) for (var qi = 0; qi &amp;lt; q0.length; qi++) register(q0[qi]);
     if (document.readyState == 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

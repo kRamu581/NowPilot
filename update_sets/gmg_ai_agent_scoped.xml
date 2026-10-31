@@ -629,7 +629,7 @@ LLMAdapter.classifyError = function(status, bodyText) {
 };
 
 /*
- * LLM-agnostic adapter supporting Anthropic, OpenAI-compatible, and OmniRoute gateways.
+ * LLM-agnostic adapter supporting Anthropic, OpenAI-compatible, OmniRoute, and Google Gemini gateways.
  */
 LLMAdapter.prototype = {
     initialize: function(providerGr) {
@@ -661,6 +661,10 @@ LLMAdapter.prototype = {
         pCopy.model = modelToUse;
 
         if (this.p.type == 'anthropic') return this._anthropic(system, messages, tools, opts, pCopy);
+        /* gemini: first-class type — defaults to Google OpenAI-compatible endpoint */
+        if (this.p.type == 'gemini' &amp;amp;&amp;amp; !pCopy.base_url) {
+            pCopy.base_url = 'https://generativelanguage.googleapis.com/v1beta/openai';
+        }
         return this._openai(LLMAdapter.systemText(system), messages, tools, opts, pCopy);
     },
 
@@ -793,6 +797,9 @@ LLMAdapter.prototype = {
         }
 
         var baseUrl = (this.p.base_url || '').replace(/\/+$/, '');
+        if (this.p.type == 'gemini' &amp;amp;&amp;amp; !baseUrl) {
+            baseUrl = 'https://generativelanguage.googleapis.com/v1beta/openai';
+        }
         var modelsUrl = baseUrl + '/models';
         var mRes = this._get(modelsUrl, {'Authorization': 'Bearer ' + this.p.key});
         var latency = new Date().getTime() - started;
@@ -866,16 +873,26 @@ LLMAdapter.prototype = {
             try { args = JSON.parse(tc['function'].arguments || '{}'); } catch (e) {}
             return {id: tc.id, name: tc['function'].name, arguments: args};
         });
-        var u = res.json.usage || {};
-        var cached = (u.prompt_tokens_details &amp;amp;&amp;amp; u.prompt_tokens_details.cached_tokens) || 0;
+        var usage = res.usage || {};
+        if (res.json.usage) {
+            var u = res.json.usage;
+            var cached = (u.prompt_tokens_details &amp;amp;&amp;amp; u.prompt_tokens_details.cached_tokens) || 0;
+            usage = {
+                input: (u.prompt_tokens || 0) - cached,
+                output: u.completion_tokens || 0,
+                cache_read: cached,
+                cache_write: 0
+            };
+        }
         return {
             ok: true,
             text: m.content || '',
             tool_calls: calls,
+            usage: usage,
+            finish_reason: choice.finish_reason || '',
             cache_info: ci,
-            stop_reason: choice.finish_reason || '',
-            block_types: m.content ? ['text'] : [],
-            usage: {input: (u.prompt_tokens || 0) - cached, output: u.completion_tokens || 0, cache_read: cached, cache_write: 0}
+            model: pCfg.model,
+            provider_type: pCfg.type || 'openai_compatible'
         };
     },
 
@@ -883,41 +900,38 @@ LLMAdapter.prototype = {
 
     _anthropic: function(system, messages, tools, opts, pCfg) {
         pCfg = pCfg || this.p;
+        opts = opts || {};
+        var body = {
+            model: pCfg.model,
+            max_tokens: pCfg.max_tokens,
+            messages: []
+        };
         var msgs = [];
         messages.forEach(function(m) {
             if (m.role == 'tool') {
-                var block = {type: 'tool_result', tool_use_id: m.tool_call_id, content: LLMAdapter.sanitizeOutboundText(m.content)};
-                var last = msgs[msgs.length - 1];
-                if (last &amp;amp;&amp;amp; last.role == 'user' &amp;amp;&amp;amp; Array.isArray(last.content) &amp;amp;&amp;amp; last.content.length &amp;amp;&amp;amp; last.content[0].type == 'tool_result') last.content.push(block);
-                else msgs.push({role: 'user', content: [block]});
-            } else if (m.role == 'assistant' &amp;amp;&amp;amp; m.raw &amp;amp;&amp;amp; m.raw.length) {
-                msgs.push({role: 'assistant', content: m.raw});
+                msgs.push({role: 'user', content: [{type: 'tool_result', tool_use_id: m.tool_call_id, content: LLMAdapter.sanitizeOutboundText(m.content)}]});
             } else if (m.role == 'assistant' &amp;amp;&amp;amp; m.tool_calls &amp;amp;&amp;amp; m.tool_calls.length) {
-                var c = [];
-                if (m.content) c.push({type: 'text', text: LLMAdapter.sanitizeOutboundText(m.content)});
-                m.tool_calls.forEach(function(t) { c.push({type: 'tool_use', id: t.id, name: t.name, input: t.arguments || {}}); });
-                msgs.push({role: 'assistant', content: c});
+                var content = [];
+                if (m.content) content.push({type: 'text', text: LLMAdapter.sanitizeOutboundText(m.content)});
+                m.tool_calls.forEach(function(t) {
+                    content.push({type: 'tool_use', id: t.id, name: t.name, input: t.arguments || {}});
+                });
+                msgs.push({role: 'assistant', content: content});
             } else {
-                msgs.push({role: m.role, content: LLMAdapter.sanitizeOutboundText(m.content)});
+                msgs.push({role: m.role == 'assistant' ? 'assistant' : 'user', content: LLMAdapter.sanitizeOutboundText(m.content)});
             }
         });
-        if (opts &amp;amp;&amp;amp; opts.final_note) {
-            var cleanNote = LLMAdapter.sanitizeOutboundText(opts.final_note);
-            var lu = msgs[msgs.length - 1];
-            if (lu &amp;amp;&amp;amp; lu.role == 'user' &amp;amp;&amp;amp; Array.isArray(lu.content)) lu.content.push({type: 'text', text: cleanNote});
-            else if (lu &amp;amp;&amp;amp; lu.role == 'user') lu.content = [{type: 'text', text: String(lu.content || '')}, {type: 'text', text: cleanNote}];
-            else msgs.push({role: 'user', content: cleanNote});
-        }
-        var body = {model: pCfg.model, system: LLMAdapter.systemText(system), messages: msgs, max_tokens: pCfg.max_tokens};
-        if (tools &amp;amp;&amp;amp; tools.length) body.tools = tools.map(function(t) { return {name: t.name, description: t.description, input_schema: t.parameters}; });
-        if (opts &amp;amp;&amp;amp; opts.web_search &amp;amp;&amp;amp; tools &amp;amp;&amp;amp; tools.length) body.tools.push({type: 'web_search_20250305', name: 'web_search', max_uses: opts.web_search.max_uses || 3});
-        if (opts &amp;amp;&amp;amp; opts.tool_choice_none &amp;amp;&amp;amp; body.tools) body.tool_choice = {type: 'none'};
-        
-        var ftA = LLMAdapter.forcedTool(opts, tools);
-        if (ftA &amp;amp;&amp;amp; body.tools) {
-            body.thinking = {type: 'disabled'};
-            if (LLMAdapter.supportsForcedTool(pCfg.model)) body.tool_choice = {type: 'tool', name: ftA};
-            else LLMAdapter.forceByOnlyTool(body, ftA);
+        if (opts.final_note) msgs.push({role: 'user', content: LLMAdapter.sanitizeOutboundText(opts.final_note)});
+        body.messages = msgs;
+        if (tools &amp;amp;&amp;amp; tools.length) {
+            body.tools = tools.map(function(t) {
+                return {name: t.name, description: t.description, input_schema: t.parameters};
+            });
+            body.tool_choice = (opts &amp;amp;&amp;amp; opts.tool_choice_none) ? {type: 'none'} : {type: 'auto'};
+            var ftA = LLMAdapter.forcedTool(opts, tools);
+            if (ftA &amp;amp;&amp;amp; LLMAdapter.supportsForcedTool(pCfg.model)) {
+                body.tool_choice = {type: 'tool', name: ftA};
+            }
         }
         var ci = LLMAdapter.applyCache(body, system, String(gs.getProperty('x_gmg_ai.llm.prompt_cache', 'true')) != 'false');
         if (ftA &amp;amp;&amp;amp; body.tools &amp;amp;&amp;amp; body.tool_choice &amp;amp;&amp;amp; body.tool_choice.type == 'auto') ci.tool_choice = 'auto_only_' + ftA;
@@ -948,45 +962,54 @@ LLMAdapter.prototype = {
             if (b.type == 'text') text.push(b.text);
             if (b.type == 'tool_use') calls.push({id: b.id, name: b.name, arguments: b.input || {}});
         });
-        var hasServer = raw.some(function(b) { return b.type == 'server_tool_use' || b.type == 'web_search_tool_result'; });
-        var types = []; raw.forEach(function(b) { if (types.indexOf(b.type) &amp;lt; 0) types.push(b.type); });
-        return {ok: true, text: text.join(''), tool_calls: calls, raw: hasServer ? raw : null, usage: usage, cache_info: ci, stop_reason: stop, block_types: types, requests: requests, resent: resent};
-    },
-
-    type: 'LLMAdapter'
+        return {
+            ok: true,
+            text: text.join(''),
+            tool_calls: calls,
+            usage: usage,
+            finish_reason: stop,
+            cache_info: ci,
+            model: pCfg.model,
+            provider_type: 'anthropic',
+            requests: requests,
+            resent: resent
+        };
+    }
 };
 
-/* ---- prompt caching (pure helpers) ---- */
-LLMAdapter.MAX_BREAKPOINTS = 4;
-LLMAdapter.LOOKBACK = 20;
-LLMAdapter.CACHEABLE = {text: 1, tool_use: 1, tool_result: 1, image: 1, document: 1};
+/* ---- Static helpers (hash, sanitize, systemText, cache) ---- */
+LLMAdapter.hash = function(s) {
+    s = String(s || '');
+    var h = 0;
+    for (var i = 0; i &amp;lt; s.length; i++) { h = ((h &amp;lt;&amp;lt; 5) - h) + s.charCodeAt(i); h = h &amp;amp; h; }
+    return (h &amp;gt;&amp;gt;&amp;gt; 0).toString(16);
+};
 
-LLMAdapter.sanitizeOutboundText = function(text) {
-    if (text === null || text === undefined) return '';
-    if (typeof DiagnosticService !== 'undefined' &amp;amp;&amp;amp; typeof DiagnosticService.redactPII === 'function') {
-        return DiagnosticService.redactPII(text);
+LLMAdapter.sanitizeOutboundText = function(t) {
+    t = String(t == null ? '' : t);
+    if (typeof DiagnosticService != 'undefined') {
+        if (typeof DiagnosticService.redactPII == 'function') {
+            try { return DiagnosticService.redactPII(t); } catch (e) {}
+        } else if (typeof DiagnosticService.redact == 'function') {
+            try { return DiagnosticService.redact(t); } catch (e) {}
+        }
     }
-    return String(text);
+    return t;
 };
 
 LLMAdapter.systemText = function(system) {
-    var raw = '';
-    if (system &amp;amp;&amp;amp; typeof system == 'object') raw = String(system['static'] || '') + (system.dynamic ? '\n\n' + system.dynamic : '');
-    else raw = String(system || '');
-    return LLMAdapter.sanitizeOutboundText(raw);
+    if (system &amp;amp;&amp;amp; typeof system == 'object') {
+        return String(system['static'] || '') + (system.dynamic ? ('\n' + system.dynamic) : '');
+    }
+    return String(system || '');
 };
 
-LLMAdapter.hash = function(s) {
-    s = String(s || '');
-    try { if (typeof GlideDigest != 'undefined') return String(new GlideDigest().getSHA256Hex(s)).substring(0, 16).toLowerCase(); } catch (e) {}
-    var h = 0x811c9dc5;
-    for (var i = 0; i &amp;lt; s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) &amp;gt;&amp;gt;&amp;gt; 0; }
-    return ('0000000' + h.toString(16)).slice(-8);
-};
+LLMAdapter.CACHEABLE = {text: 1, tool_use: 1};
+LLMAdapter.LOOKBACK = 4;
+LLMAdapter.MAX_BREAKPOINTS = 4;
 
 LLMAdapter._markLast = function(m) {
-    if (!m) return false;
-    if (typeof m.content == 'string') { if (!m.content) return false; m.content = [{type: 'text', text: m.content}]; }
+    if (typeof m.content == 'string') { m.content = [{type: 'text', text: m.content}]; }
     if (!Array.isArray(m.content) || !m.content.length) return false;
     m.content = m.content.slice();
     for (var i = m.content.length - 1; i &amp;gt;= 0; i--) {
