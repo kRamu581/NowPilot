@@ -515,8 +515,12 @@ LLMAdapter.hash = function(s) {
 
 LLMAdapter.sanitizeOutboundText = function(t) {
     t = String(t == null ? '' : t);
-    if (typeof DiagnosticService != 'undefined' && DiagnosticService.redact) {
-        try { return DiagnosticService.redact(t); } catch (e) {}
+    if (typeof DiagnosticService != 'undefined') {
+        if (typeof DiagnosticService.redactPII == 'function') {
+            try { return DiagnosticService.redactPII(t); } catch (e) {}
+        } else if (typeof DiagnosticService.redact == 'function') {
+            try { return DiagnosticService.redact(t); } catch (e) {}
+        }
     }
     return t;
 };
