@@ -128,6 +128,11 @@
             s.owner = UID;
             if (!s.mode) s.mode = 'chat';
             if (!s.view) s.view = 'chat';
+            if (s.pending && (!s.pendingSince || Date.now() - s.pendingSince > 10000)) {
+                s.pending = false;
+                delete s.pendingSince;
+                try { top.sessionStorage.setItem(KEY, JSON.stringify(s)); } catch (eSave) {}
+            }
             return s;
         } catch (e) { return d; }
     }
@@ -588,8 +593,11 @@
         '#gmgai-in{flex:0 0 auto;min-width:0;width:100%;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--np-border);background:#FFFFFF;box-sizing:border-box;align-items:flex-end}' +
         '.gmgai-composer-card{width:100%;min-width:0;background:#FFFFFF;border:1.5px solid #FDA4AF;border-radius:16px;padding:7px 10px 5px;display:flex;flex-direction:column;gap:4px;transition:all .18s ease;box-shadow:0 2px 6px rgba(244,63,94,0.05)}' +
         '.gmgai-composer-card:focus-within{border-color:#F43F5E;box-shadow:0 3px 12px rgba(244,63,94,0.12)}' +
-        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;width:100% !important;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;min-height:30px;max-height:100px;padding:2px 2px;font:inherit;font-size:13px;line-height:1.4;color:#0F172A}' +
-        '#gmgai-in textarea::placeholder{color:#94A3B8}' +
+        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;width:100% !important;min-width:100% !important;min-height:44px !important;max-height:120px !important;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;padding:4px 4px !important;font:inherit;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;pointer-events:auto !important;cursor:text !important;user-select:text !important;-webkit-user-select:text !important;display:block !important;box-sizing:border-box !important}' +
+        '#gmgai-in textarea::placeholder{color:#94A3B8 !important;opacity:1 !important}' +
+        '#gmgai-in textarea::-webkit-input-placeholder{color:#94A3B8 !important;opacity:1 !important}' +
+        '#gmgai-in textarea::-moz-placeholder{color:#94A3B8 !important;opacity:1 !important}' +
+        '#gmgai-in textarea:-ms-input-placeholder{color:#94A3B8 !important;opacity:1 !important}' +
         '.gmgai-composer-bottom{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:2px;position:relative}' +
         '.gmgai-model-pill-wrap{position:relative;display:inline-flex;align-items:center}' +
         '.gmgai-model-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:20px;font-size:11px;font-weight:500;color:#334155;cursor:pointer;transition:all .15s ease;font-family:inherit}' +
@@ -1055,8 +1063,8 @@
 
         h += '</div>' + devPane + itsmPane + workflowPane +
             '<div id="gmgai-in">' +
-            '<div class="gmgai-composer-card">' +
-            '<textarea placeholder="' + inputPlaceholder + '" aria-label="Message Input"' + (s.pending ? ' disabled style="opacity:0.7"' : '') + '></textarea>' +
+            '<div class="gmgai-composer-card" style="cursor:text !important">' +
+            '<textarea id="gmgai-textarea" placeholder="' + inputPlaceholder + '" aria-label="Message Input" rows="2" style="display:block !important;width:100% !important;min-width:100% !important;height:44px !important;min-height:44px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:4px 4px !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;"' + (s.pending ? ' disabled style="opacity:0.7"' : '') + '></textarea>' +
             '<div class="gmgai-composer-bottom">' +
             '<div class="gmgai-model-pill-wrap">' +
             '<button type="button" id="gmgai-model-btn" class="gmgai-model-pill" title="Switch AI Model" aria-label="Switch AI Model">' +
@@ -1445,18 +1453,65 @@
             }
         }
 
-        if (ta) {
-            try { ta.removeAttribute('disabled'); ta.removeAttribute('readonly'); } catch (eTa) {}
-            if (s.pending) { ta.setAttribute('disabled', 'disabled'); }
-            ta.setAttribute('tabindex', '0');
-            ta.oninput = function(e) { try { e.stopPropagation(); } catch (e0) {} updateSendState(); };
-            ta.onkeydown = function(e) {
-                try { e.stopPropagation(); } catch (e1) {}
-                if (e.key == 'Enter' && !e.shiftKey) { e.preventDefault(); send(ta.value); }
+        var composerCard = root.querySelector('.gmgai-composer-card');
+        if (composerCard && ta) {
+            composerCard.onclick = function(e) {
+                if (!e.target.closest('#gmgai-model-btn') && !e.target.closest('#gmgai-clip') && !e.target.closest('#gmgai-send') && !e.target.closest('#gmgai-model-menu')) {
+                    try {
+                        ta.disabled = false;
+                        ta.readOnly = false;
+                        ta.removeAttribute('disabled');
+                        ta.removeAttribute('readonly');
+                    } catch (eFoc) {}
+                    ta.focus();
+                }
             };
-            ta.onkeyup = function(e) { try { e.stopPropagation(); } catch (e2) {} };
-            ta.onkeypress = function(e) { try { e.stopPropagation(); } catch (e3) {} };
-            if (!s.pending) { try { ta.focus(); } catch (e6) {} }
+        }
+
+        if (ta) {
+            if (s.pending && (!s.pendingSince || Date.now() - s.pendingSince > 8000)) {
+                s.pending = false;
+                save(s);
+            }
+            if (!s.pending) {
+                try {
+                    ta.disabled = false;
+                    ta.readOnly = false;
+                    ta.removeAttribute('disabled');
+                    ta.removeAttribute('readonly');
+                } catch (eTa) {}
+            }
+            ta.setAttribute('tabindex', '0');
+
+            ta.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
+            ta.addEventListener('click', function(e) { e.stopPropagation(); ta.focus(); }, true);
+            ta.addEventListener('focus', function(e) { e.stopPropagation(); }, true);
+
+            ta.addEventListener('input', function(e) {
+                try { e.stopPropagation(); } catch (e0) {}
+                updateSendState();
+            }, true);
+
+            ta.addEventListener('keydown', function(e) {
+                try { e.stopPropagation(); } catch (e1) {}
+                if (e.key == 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    send(ta.value);
+                }
+            }, true);
+
+            ta.addEventListener('keyup', function(e) {
+                try { e.stopPropagation(); } catch (e2) {}
+                updateSendState();
+            }, true);
+
+            ta.addEventListener('keypress', function(e) {
+                try { e.stopPropagation(); } catch (e3) {}
+            }, true);
+
+            if (!s.pending) {
+                setTimeout(function() { try { ta.focus(); } catch (e6) {} }, 50);
+            }
         }
 
         var sendBtnEl = root.querySelector('#gmgai-in button#gmgai-send');
