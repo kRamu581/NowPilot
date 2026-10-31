@@ -1442,7 +1442,7 @@ GMGAIApplier.prototype = {
         '#gmgai-in{flex:0 0 auto;min-width:0;width:100%;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--np-border);background:#FFFFFF;box-sizing:border-box;align-items:flex-end}' +
         '.gmgai-composer-card{width:100%;min-width:0;background:#FFFFFF;border:1.5px solid #FDA4AF;border-radius:16px;padding:7px 10px 5px;display:flex;flex-direction:column;gap:4px;transition:all .18s ease;box-shadow:0 2px 6px rgba(244,63,94,0.05)}' +
         '.gmgai-composer-card:focus-within{border-color:#F43F5E;box-shadow:0 3px 12px rgba(244,63,94,0.12)}' +
-        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;min-height:30px;max-height:100px;padding:2px 2px;font:inherit;font-size:13px;line-height:1.4;color:#0F172A}' +
+        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;width:100% !important;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;min-height:30px;max-height:100px;padding:2px 2px;font:inherit;font-size:13px;line-height:1.4;color:#0F172A}' +
         '#gmgai-in textarea::placeholder{color:#94A3B8}' +
         '.gmgai-composer-bottom{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:2px;position:relative}' +
         '.gmgai-model-pill-wrap{position:relative;display:inline-flex;align-items:center}' +
@@ -2300,15 +2300,17 @@ GMGAIApplier.prototype = {
         }
 
         if (ta) {
-            ta.oninput = updateSendState;
+            try { ta.removeAttribute('disabled'); ta.removeAttribute('readonly'); } catch (eTa) {}
+            if (s.pending) { ta.setAttribute('disabled', 'disabled'); }
+            ta.setAttribute('tabindex', '0');
+            ta.oninput = function(e) { try { e.stopPropagation(); } catch (e0) {} updateSendState(); };
             ta.onkeydown = function(e) {
-                if (e.key == 'Enter' &amp;amp;&amp;amp; !e.shiftKey) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    send(ta.value);
-                }
+                try { e.stopPropagation(); } catch (e1) {}
+                if (e.key == 'Enter' &amp;amp;&amp;amp; !e.shiftKey) { e.preventDefault(); send(ta.value); }
             };
-            if (!s.pending) ta.focus();
+            ta.onkeyup = function(e) { try { e.stopPropagation(); } catch (e2) {} };
+            ta.onkeypress = function(e) { try { e.stopPropagation(); } catch (e3) {} };
+            if (!s.pending) { try { ta.focus(); } catch (e6) {} }
         }
 
         var sendBtnEl = root.querySelector('#gmgai-in button#gmgai-send');
@@ -2476,7 +2478,7 @@ GMGAIApplier.prototype = {
         top.__gmgaiRender = render;
         top.__gmgaiOpen = openWith;
         var s = load(); if (s.pending &amp;amp;&amp;amp; !s.pendingSince) { s.pendingSince = Date.now(); save(s); }
-        if (s.pending &amp;amp;&amp;amp; s.pendingSince &amp;amp;&amp;amp; Date.now() - s.pendingSince &amp;gt; 120000) { s.pending = false; delete s.pendingSince; save(s); }
+        if (s.pending &amp;amp;&amp;amp; s.pendingSince &amp;amp;&amp;amp; Date.now() - s.pendingSince &amp;gt; 45000) { s.pending = false; delete s.pendingSince; save(s); }
         render();
         booted = true; extStart();
     }
