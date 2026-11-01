@@ -591,24 +591,24 @@
         '.gmgai-chip{display:inline-block;font:11px ui-monospace,Menlo,monospace;background:var(--np-surface-muted);color:var(--np-navy);border:1px solid var(--np-border);border-radius:4px;padding:1px 6px;margin:0 3px 3px 0;font-weight:500}' +
         '.gmgai-sug{display:block;width:100%;min-width:0;max-width:100%;text-align:left;margin:4px 0;padding:8px 12px;border:1px solid var(--np-border);border-radius:8px;background:var(--np-surface);cursor:pointer;color:var(--np-text);font-size:12px;font-weight:500;transition:all .15s ease;box-shadow:0 1px 3px rgba(0,0,0,0.02);box-sizing:border-box;font-family:inherit;overflow-wrap:break-word;word-break:break-word}' +
         '#gmgai-in{flex:0 0 auto;min-width:0;width:100%;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--np-border);background:#FFFFFF;box-sizing:border-box;align-items:flex-end}' +
-        '.gmgai-composer-card{width:100%;min-width:0;background:#FFFFFF;border:1.5px solid #FDA4AF;border-radius:16px;padding:7px 10px 5px;display:flex;flex-direction:column;gap:4px;transition:all .18s ease;box-shadow:0 2px 6px rgba(244,63,94,0.05)}' +
+        '.gmgai-composer-card{width:100%;min-width:0;background:#FFFFFF;border:1.5px solid #FDA4AF;border-radius:16px;padding:7px 10px 5px;display:flex;flex-direction:column;gap:4px;transition:all .18s ease;box-shadow:0 2px 6px rgba(244,63,94,0.05);cursor:text}' +
         '.gmgai-composer-card:focus-within{border-color:#F43F5E;box-shadow:0 3px 12px rgba(244,63,94,0.12)}' +
-        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;width:100% !important;min-width:100% !important;min-height:44px !important;max-height:120px !important;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;padding:4px 4px !important;font:inherit;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;pointer-events:auto !important;cursor:text !important;user-select:text !important;-webkit-user-select:text !important;display:block !important;box-sizing:border-box !important}' +
+        '#gmgai-in textarea{flex:1 1 auto;width:0;min-width:0;max-width:100%;width:100% !important;min-width:100% !important;min-height:48px !important;max-height:120px !important;border:0 !important;outline:none !important;box-shadow:none !important;background:transparent !important;resize:none;padding:4px 4px !important;font:inherit;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;pointer-events:auto !important;cursor:text !important;user-select:text !important;-webkit-user-select:text !important;display:block !important;box-sizing:border-box !important}' +
         '#gmgai-in textarea::placeholder{color:#94A3B8 !important;opacity:1 !important}' +
         '#gmgai-in textarea::-webkit-input-placeholder{color:#94A3B8 !important;opacity:1 !important}' +
         '#gmgai-in textarea::-moz-placeholder{color:#94A3B8 !important;opacity:1 !important}' +
         '#gmgai-in textarea:-ms-input-placeholder{color:#94A3B8 !important;opacity:1 !important}' +
-        '.gmgai-composer-bottom{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:2px;position:relative}' +
-        '.gmgai-model-pill-wrap{position:relative;display:inline-flex;align-items:center}' +
-        '.gmgai-model-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:20px;font-size:11px;font-weight:500;color:#334155;cursor:pointer;transition:all .15s ease;font-family:inherit}' +
+        '.gmgai-composer-bottom{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:2px;position:relative;user-select:none;-webkit-user-select:none}' +
+        '.gmgai-model-pill-wrap{position:relative;display:inline-flex;align-items:center;user-select:none;-webkit-user-select:none}' +
+        '.gmgai-model-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:20px;font-size:11px;font-weight:500;color:#334155;cursor:pointer;transition:all .15s ease;font-family:inherit;user-select:none;-webkit-user-select:none}' +
         '.gmgai-model-pill:hover{background:#F1F5F9;border-color:#CBD5E1;color:#0F172A}' +
         '.gmgai-sparkle{color:#3B82F6;font-size:11px}' +
         '.gmgai-chevron{font-size:9px;color:#64748B}' +
         '.gmgai-model-menu{position:absolute;bottom:calc(100% + 6px);left:0;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.04);min-width:200px;max-height:200px;overflow-y:auto;padding:4px;z-index:2147483015;display:flex;flex-direction:column;gap:2px}' +
-        '.gmgai-model-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;font-size:12px;font-weight:500;color:#334155;background:transparent;border:0;width:100%;text-align:left;cursor:pointer;transition:all .15s ease;font-family:inherit}' +
+        '.gmgai-model-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;font-size:12px;font-weight:500;color:#334155;background:transparent;border:0;width:100%;text-align:left;cursor:pointer;transition:all .15s ease;font-family:inherit;user-select:none;-webkit-user-select:none}' +
         '.gmgai-model-item:hover{background:#F8FAFC;color:#0F172A}' +
         '.gmgai-model-item.gmgai-active{font-weight:600;color:#2563EB;background:#EFF6FF}' +
-        '.gmgai-composer-actions{display:flex;align-items:center;gap:6px}' +
+        '.gmgai-composer-actions{display:flex;align-items:center;gap:6px;user-select:none;-webkit-user-select:none}' +
         '#gmgai-clip{flex:0 0 36px;width:30px;height:30px;border-radius:50%;background:transparent;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;transition:all .15s ease;padding:0;box-sizing:border-box}' +
         '#gmgai-clip:hover{background:#F1F5F9;color:#0F172A}' +
         '#gmgai-in button#gmgai-send{flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:#CBD5E1;color:#FFFFFF;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s ease;white-space:nowrap;box-sizing:border-box;padding:0}' +
@@ -1064,7 +1064,7 @@
         h += '</div>' + devPane + itsmPane + workflowPane +
             '<div id="gmgai-in">' +
             '<div class="gmgai-composer-card" style="cursor:text !important">' +
-            '<textarea id="gmgai-textarea" placeholder="' + inputPlaceholder + '" aria-label="Message Input" rows="2" style="display:block !important;width:100% !important;min-width:100% !important;height:44px !important;min-height:44px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:4px 4px !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;"' + (s.pending ? ' disabled style="opacity:0.7"' : '') + '></textarea>' +
+            '<textarea id="gmgai-textarea" placeholder="' + inputPlaceholder + '" aria-label="Message Input" rows="2" style="display:block !important;width:100% !important;min-width:100% !important;height:48px !important;min-height:48px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:4px 4px !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;"' + (s.pending ? ' disabled style="opacity:0.7"' : '') + '></textarea>' +
             '<div class="gmgai-composer-bottom">' +
             '<div class="gmgai-model-pill-wrap">' +
             '<button type="button" id="gmgai-model-btn" class="gmgai-model-pill" title="Switch AI Model" aria-label="Switch AI Model">' +
@@ -1266,6 +1266,26 @@
         };
         tdoc.addEventListener('keydown', top.__gmgaiDocKeydown);
 
+        if (top.__gmgaiKeydownCapture) {
+            try {
+                tdoc.removeEventListener('keydown', top.__gmgaiKeydownCapture, true);
+                top.removeEventListener('keydown', top.__gmgaiKeydownCapture, true);
+            } catch (eRc) {}
+            top.__gmgaiKeydownCapture = null;
+        }
+        top.__gmgaiKeydownCapture = function(e) {
+            var ae = tdoc.activeElement;
+            if (ae && (ae.id === 'gmgai-textarea' || (ae.tagName === 'TEXTAREA' && ae.closest && ae.closest('#gmgai-panel')))) {
+                if (e.key !== 'Escape') {
+                    try { e.stopPropagation(); } catch (eKp) {}
+                }
+            }
+        };
+        try {
+            tdoc.addEventListener('keydown', top.__gmgaiKeydownCapture, true);
+            top.addEventListener('keydown', top.__gmgaiKeydownCapture, true);
+        } catch (eAc) {}
+
         var selProv = root.querySelector('#gmgai-prov-select');
         if (selProv) {
             selProv.onchange = function() {
@@ -1455,8 +1475,24 @@
 
         var composerCard = root.querySelector('.gmgai-composer-card');
         if (composerCard && ta) {
+            composerCard.addEventListener('mousedown', function(e) {
+                if (e.target.closest('#gmgai-model-btn') || e.target.closest('#gmgai-clip') || e.target.closest('#gmgai-send') || e.target.closest('#gmgai-model-menu') || e.target.closest('select')) {
+                    return;
+                }
+                if (e.target !== ta) {
+                    e.preventDefault();
+                    try {
+                        ta.disabled = false;
+                        ta.readOnly = false;
+                        ta.removeAttribute('disabled');
+                        ta.removeAttribute('readonly');
+                    } catch (eFoc) {}
+                    ta.focus();
+                }
+            }, false);
+
             composerCard.onclick = function(e) {
-                if (!e.target.closest('#gmgai-model-btn') && !e.target.closest('#gmgai-clip') && !e.target.closest('#gmgai-send') && !e.target.closest('#gmgai-model-menu')) {
+                if (!e.target.closest('#gmgai-model-btn') && !e.target.closest('#gmgai-clip') && !e.target.closest('#gmgai-send') && !e.target.closest('#gmgai-model-menu') && !e.target.closest('select')) {
                     try {
                         ta.disabled = false;
                         ta.readOnly = false;
