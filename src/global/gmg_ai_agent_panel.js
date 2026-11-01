@@ -128,7 +128,10 @@
             s.owner = UID;
             if (!s.mode) s.mode = 'chat';
             if (!s.view) s.view = 'chat';
-            if (s.pending && (!s.pendingSince || Date.now() - s.pendingSince > 10000)) {
+            if (!s.messages || s.messages.length === 0) {
+                s.pending = false;
+                delete s.pendingSince;
+            } else if (s.pending && (!s.pendingSince || Date.now() - s.pendingSince > 8000)) {
                 s.pending = false;
                 delete s.pendingSince;
                 try { top.sessionStorage.setItem(KEY, JSON.stringify(s)); } catch (eSave) {}
@@ -1064,7 +1067,7 @@
         h += '</div>' + devPane + itsmPane + workflowPane +
             '<div id="gmgai-in">' +
             '<div class="gmgai-composer-card" style="cursor:text !important">' +
-            '<textarea id="gmgai-textarea" placeholder="' + inputPlaceholder + '" aria-label="Message Input" rows="2" style="display:block !important;width:100% !important;min-width:100% !important;height:48px !important;min-height:48px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:4px 4px !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;"' + (s.pending ? ' disabled style="opacity:0.7"' : '') + '></textarea>' +
+            '<textarea id="gmgai-textarea" placeholder="' + inputPlaceholder + '" aria-label="Message Input" rows="2" style="display:block !important;width:100% !important;min-width:100% !important;height:48px !important;min-height:48px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:2px 0 !important;margin:0 !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;"' + (s.pending ? ' disabled style="opacity:0.7"' : '') + '></textarea>' +
             '<div class="gmgai-composer-bottom">' +
             '<div class="gmgai-model-pill-wrap">' +
             '<button type="button" id="gmgai-model-btn" class="gmgai-model-pill" title="Switch AI Model" aria-label="Switch AI Model">' +
@@ -1273,18 +1276,6 @@
             } catch (eRc) {}
             top.__gmgaiKeydownCapture = null;
         }
-        top.__gmgaiKeydownCapture = function(e) {
-            var ae = tdoc.activeElement;
-            if (ae && (ae.id === 'gmgai-textarea' || (ae.tagName === 'TEXTAREA' && ae.closest && ae.closest('#gmgai-panel')))) {
-                if (e.key !== 'Escape') {
-                    try { e.stopPropagation(); } catch (eKp) {}
-                }
-            }
-        };
-        try {
-            tdoc.addEventListener('keydown', top.__gmgaiKeydownCapture, true);
-            top.addEventListener('keydown', top.__gmgaiKeydownCapture, true);
-        } catch (eAc) {}
 
         var selProv = root.querySelector('#gmgai-prov-select');
         if (selProv) {
@@ -1475,24 +1466,11 @@
 
         var composerCard = root.querySelector('.gmgai-composer-card');
         if (composerCard && ta) {
-            composerCard.addEventListener('mousedown', function(e) {
+            composerCard.onclick = function(e) {
                 if (e.target.closest('#gmgai-model-btn') || e.target.closest('#gmgai-clip') || e.target.closest('#gmgai-send') || e.target.closest('#gmgai-model-menu') || e.target.closest('select')) {
                     return;
                 }
-                if (e.target !== ta) {
-                    e.preventDefault();
-                    try {
-                        ta.disabled = false;
-                        ta.readOnly = false;
-                        ta.removeAttribute('disabled');
-                        ta.removeAttribute('readonly');
-                    } catch (eFoc) {}
-                    ta.focus();
-                }
-            }, false);
-
-            composerCard.onclick = function(e) {
-                if (!e.target.closest('#gmgai-model-btn') && !e.target.closest('#gmgai-clip') && !e.target.closest('#gmgai-send') && !e.target.closest('#gmgai-model-menu') && !e.target.closest('select')) {
+                if (ta && !s.pending) {
                     try {
                         ta.disabled = false;
                         ta.readOnly = false;
@@ -1505,45 +1483,33 @@
         }
 
         if (ta) {
-            if (s.pending && (!s.pendingSince || Date.now() - s.pendingSince > 8000)) {
-                s.pending = false;
-                save(s);
-            }
-            if (!s.pending) {
-                try {
-                    ta.disabled = false;
-                    ta.readOnly = false;
-                    ta.removeAttribute('disabled');
-                    ta.removeAttribute('readonly');
-                } catch (eTa) {}
+            try {
+                ta.disabled = false;
+                ta.readOnly = false;
+                ta.removeAttribute('disabled');
+                ta.removeAttribute('readonly');
+            } catch (eTa) {}
+            if (s.pending) {
+                ta.disabled = true;
+                ta.setAttribute('disabled', 'disabled');
             }
             ta.setAttribute('tabindex', '0');
 
-            ta.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
-            ta.addEventListener('click', function(e) { e.stopPropagation(); ta.focus(); }, true);
-            ta.addEventListener('focus', function(e) { e.stopPropagation(); }, true);
-
-            ta.addEventListener('input', function(e) {
-                try { e.stopPropagation(); } catch (e0) {}
+            ta.oninput = function() {
                 updateSendState();
-            }, true);
-
-            ta.addEventListener('keydown', function(e) {
-                try { e.stopPropagation(); } catch (e1) {}
-                if (e.key == 'Enter' && !e.shiftKey) {
+            };
+            ta.onkeydown = function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     send(ta.value);
                 }
-            }, true);
-
-            ta.addEventListener('keyup', function(e) {
-                try { e.stopPropagation(); } catch (e2) {}
+            };
+            ta.onkeyup = function() {
                 updateSendState();
-            }, true);
-
-            ta.addEventListener('keypress', function(e) {
-                try { e.stopPropagation(); } catch (e3) {}
-            }, true);
+            };
+            ta.onkeypress = function() {
+                updateSendState();
+            };
 
             if (!s.pending) {
                 setTimeout(function() { try { ta.focus(); } catch (e6) {} }, 50);

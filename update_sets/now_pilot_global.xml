@@ -982,7 +982,10 @@ GMGAIApplier.prototype = {
             s.owner = UID;
             if (!s.mode) s.mode = 'chat';
             if (!s.view) s.view = 'chat';
-            if (s.pending &amp;amp;&amp;amp; (!s.pendingSince || Date.now() - s.pendingSince &amp;gt; 10000)) {
+            if (!s.messages || s.messages.length === 0) {
+                s.pending = false;
+                delete s.pendingSince;
+            } else if (s.pending &amp;amp;&amp;amp; (!s.pendingSince || Date.now() - s.pendingSince &amp;gt; 8000)) {
                 s.pending = false;
                 delete s.pendingSince;
                 try { top.sessionStorage.setItem(KEY, JSON.stringify(s)); } catch (eSave) {}
@@ -1918,7 +1921,7 @@ GMGAIApplier.prototype = {
         h += '&amp;lt;/div&amp;gt;' + devPane + itsmPane + workflowPane +
             '&amp;lt;div id=&amp;quot;gmgai-in&amp;quot;&amp;gt;' +
             '&amp;lt;div class=&amp;quot;gmgai-composer-card&amp;quot; style=&amp;quot;cursor:text !important&amp;quot;&amp;gt;' +
-            '&amp;lt;textarea id=&amp;quot;gmgai-textarea&amp;quot; placeholder=&amp;quot;' + inputPlaceholder + '&amp;quot; aria-label=&amp;quot;Message Input&amp;quot; rows=&amp;quot;2&amp;quot; style=&amp;quot;display:block !important;width:100% !important;min-width:100% !important;height:48px !important;min-height:48px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:4px 4px !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;&amp;quot;' + (s.pending ? ' disabled style=&amp;quot;opacity:0.7&amp;quot;' : '') + '&amp;gt;&amp;lt;/textarea&amp;gt;' +
+            '&amp;lt;textarea id=&amp;quot;gmgai-textarea&amp;quot; placeholder=&amp;quot;' + inputPlaceholder + '&amp;quot; aria-label=&amp;quot;Message Input&amp;quot; rows=&amp;quot;2&amp;quot; style=&amp;quot;display:block !important;width:100% !important;min-width:100% !important;height:48px !important;min-height:48px !important;border:none !important;outline:none !important;box-shadow:none !important;background:transparent !important;font-size:13.5px !important;line-height:1.45 !important;color:#0F172A !important;resize:none !important;box-sizing:border-box !important;padding:2px 0 !important;margin:0 !important;cursor:text !important;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;&amp;quot;' + (s.pending ? ' disabled style=&amp;quot;opacity:0.7&amp;quot;' : '') + '&amp;gt;&amp;lt;/textarea&amp;gt;' +
             '&amp;lt;div class=&amp;quot;gmgai-composer-bottom&amp;quot;&amp;gt;' +
             '&amp;lt;div class=&amp;quot;gmgai-model-pill-wrap&amp;quot;&amp;gt;' +
             '&amp;lt;button type=&amp;quot;button&amp;quot; id=&amp;quot;gmgai-model-btn&amp;quot; class=&amp;quot;gmgai-model-pill&amp;quot; title=&amp;quot;Switch AI Model&amp;quot; aria-label=&amp;quot;Switch AI Model&amp;quot;&amp;gt;' +
@@ -2127,18 +2130,6 @@ GMGAIApplier.prototype = {
             } catch (eRc) {}
             top.__gmgaiKeydownCapture = null;
         }
-        top.__gmgaiKeydownCapture = function(e) {
-            var ae = tdoc.activeElement;
-            if (ae &amp;amp;&amp;amp; (ae.id === 'gmgai-textarea' || (ae.tagName === 'TEXTAREA' &amp;amp;&amp;amp; ae.closest &amp;amp;&amp;amp; ae.closest('#gmgai-panel')))) {
-                if (e.key !== 'Escape') {
-                    try { e.stopPropagation(); } catch (eKp) {}
-                }
-            }
-        };
-        try {
-            tdoc.addEventListener('keydown', top.__gmgaiKeydownCapture, true);
-            top.addEventListener('keydown', top.__gmgaiKeydownCapture, true);
-        } catch (eAc) {}
 
         var selProv = root.querySelector('#gmgai-prov-select');
         if (selProv) {
@@ -2329,24 +2320,11 @@ GMGAIApplier.prototype = {
 
         var composerCard = root.querySelector('.gmgai-composer-card');
         if (composerCard &amp;amp;&amp;amp; ta) {
-            composerCard.addEventListener('mousedown', function(e) {
+            composerCard.onclick = function(e) {
                 if (e.target.closest('#gmgai-model-btn') || e.target.closest('#gmgai-clip') || e.target.closest('#gmgai-send') || e.target.closest('#gmgai-model-menu') || e.target.closest('select')) {
                     return;
                 }
-                if (e.target !== ta) {
-                    e.preventDefault();
-                    try {
-                        ta.disabled = false;
-                        ta.readOnly = false;
-                        ta.removeAttribute('disabled');
-                        ta.removeAttribute('readonly');
-                    } catch (eFoc) {}
-                    ta.focus();
-                }
-            }, false);
-
-            composerCard.onclick = function(e) {
-                if (!e.target.closest('#gmgai-model-btn') &amp;amp;&amp;amp; !e.target.closest('#gmgai-clip') &amp;amp;&amp;amp; !e.target.closest('#gmgai-send') &amp;amp;&amp;amp; !e.target.closest('#gmgai-model-menu') &amp;amp;&amp;amp; !e.target.closest('select')) {
+                if (ta &amp;amp;&amp;amp; !s.pending) {
                     try {
                         ta.disabled = false;
                         ta.readOnly = false;
@@ -2359,45 +2337,33 @@ GMGAIApplier.prototype = {
         }
 
         if (ta) {
-            if (s.pending &amp;amp;&amp;amp; (!s.pendingSince || Date.now() - s.pendingSince &amp;gt; 8000)) {
-                s.pending = false;
-                save(s);
-            }
-            if (!s.pending) {
-                try {
-                    ta.disabled = false;
-                    ta.readOnly = false;
-                    ta.removeAttribute('disabled');
-                    ta.removeAttribute('readonly');
-                } catch (eTa) {}
+            try {
+                ta.disabled = false;
+                ta.readOnly = false;
+                ta.removeAttribute('disabled');
+                ta.removeAttribute('readonly');
+            } catch (eTa) {}
+            if (s.pending) {
+                ta.disabled = true;
+                ta.setAttribute('disabled', 'disabled');
             }
             ta.setAttribute('tabindex', '0');
 
-            ta.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
-            ta.addEventListener('click', function(e) { e.stopPropagation(); ta.focus(); }, true);
-            ta.addEventListener('focus', function(e) { e.stopPropagation(); }, true);
-
-            ta.addEventListener('input', function(e) {
-                try { e.stopPropagation(); } catch (e0) {}
+            ta.oninput = function() {
                 updateSendState();
-            }, true);
-
-            ta.addEventListener('keydown', function(e) {
-                try { e.stopPropagation(); } catch (e1) {}
-                if (e.key == 'Enter' &amp;amp;&amp;amp; !e.shiftKey) {
+            };
+            ta.onkeydown = function(e) {
+                if (e.key === 'Enter' &amp;amp;&amp;amp; !e.shiftKey) {
                     e.preventDefault();
                     send(ta.value);
                 }
-            }, true);
-
-            ta.addEventListener('keyup', function(e) {
-                try { e.stopPropagation(); } catch (e2) {}
+            };
+            ta.onkeyup = function() {
                 updateSendState();
-            }, true);
-
-            ta.addEventListener('keypress', function(e) {
-                try { e.stopPropagation(); } catch (e3) {}
-            }, true);
+            };
+            ta.onkeypress = function() {
+                updateSendState();
+            };
 
             if (!s.pending) {
                 setTimeout(function() { try { ta.focus(); } catch (e6) {} }, 50);
