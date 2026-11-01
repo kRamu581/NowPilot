@@ -32,7 +32,6 @@ new_block = block[:s_start + len(script_start_tag)] + escaped_code + block[s_end
 new_xml = xml[:start_update] + new_block + xml[end_update:]
 
 Path('update_sets/now_pilot_global.xml').write_text(new_xml, encoding='utf-8')
-shutil.copyfile('update_sets/now_pilot_global.xml', 'update_sets/gmg_ai_agent_global.xml')
 
 # update SHA256SUMS
 gh = hashlib.sha256(Path('update_sets/now_pilot_global.xml').read_bytes()).hexdigest()

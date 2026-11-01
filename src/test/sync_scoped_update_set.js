@@ -10,7 +10,7 @@ function escapeForPayload(code) {
         .replace(/"/g, '&amp;quot;');
 }
 
-const scopedXmlPath = path.resolve('update_sets/gmg_ai_agent_scoped.xml');
+const scopedXmlPath = path.resolve('update_sets/now_pilot_scoped.xml');
 let xml = fs.readFileSync(scopedXmlPath, 'utf8');
 
 // 1. Update Application menu title
@@ -69,11 +69,11 @@ filesToSync.forEach(name => {
 
 xml = xml.replace(/\r\n/g, '\n');
 fs.writeFileSync(scopedXmlPath, xml, 'utf8');
-console.log('Successfully wrote updated update_sets/gmg_ai_agent_scoped.xml');
+console.log('Successfully wrote updated update_sets/now_pilot_scoped.xml');
 
 // Recompute SHA256SUMS
-const globalPath = 'update_sets/gmg_ai_agent_global.xml';
-const scopedPath = 'update_sets/gmg_ai_agent_scoped.xml';
+const globalPath = 'update_sets/now_pilot_global.xml';
+const scopedPath = 'update_sets/now_pilot_scoped.xml';
 
 const globalHash = crypto.createHash('sha256').update(fs.readFileSync(globalPath)).digest('hex');
 const scopedHash = crypto.createHash('sha256').update(fs.readFileSync(scopedPath)).digest('hex');

@@ -34,9 +34,7 @@ console.log('================================================================\n'
 console.log('--- PHASE 1: DISCOVER ALL SERVICENOW XML FILES ---');
 const xmlFiles = [
     { path: 'update_sets/now_pilot_global.xml', type: 'Global Update Set', scope: 'global', primary: true },
-    { path: 'update_sets/gmg_ai_agent_global.xml', type: 'Global Update Set (Legacy Mirror)', scope: 'global', primary: false },
-    { path: 'update_sets/now_pilot_scoped.xml', type: 'Scoped Update Set', scope: 'x_gmg_ai', primary: true },
-    { path: 'update_sets/gmg_ai_agent_scoped.xml', type: 'Scoped Update Set (Legacy Mirror)', scope: 'x_gmg_ai', primary: false }
+    { path: 'update_sets/now_pilot_scoped.xml', type: 'Scoped Update Set', scope: 'x_gmg_ai', primary: true }
 ];
 
 const inventory = [];
@@ -80,25 +78,8 @@ xmlFiles.forEach(item => {
     console.log(`[FOUND] ${item.path.padEnd(38)} | Size: ${size.toString().padStart(7)} bytes | Records: ${records.length.toString().padStart(3)} | SHA256: ${hash.substring(0, 16)}...`);
 });
 
-// Verify mirrors
 const npGlobal = inventory.find(i => i.path === 'update_sets/now_pilot_global.xml');
-const gmgGlobal = inventory.find(i => i.path === 'update_sets/gmg_ai_agent_global.xml');
 const npScoped = inventory.find(i => i.path === 'update_sets/now_pilot_scoped.xml');
-const gmgScoped = inventory.find(i => i.path === 'update_sets/gmg_ai_agent_scoped.xml');
-
-if (npGlobal.hash === gmgGlobal.hash) {
-    console.log('[PASS] now_pilot_global.xml and gmg_ai_agent_global.xml are identical byte-for-byte');
-} else {
-    console.error('[FAIL] Global update sets diverge!');
-    process.exit(1);
-}
-
-if (npScoped.hash === gmgScoped.hash) {
-    console.log('[PASS] now_pilot_scoped.xml and gmg_ai_agent_scoped.xml are identical byte-for-byte');
-} else {
-    console.error('[FAIL] Scoped update sets diverge!');
-    process.exit(1);
-}
 
 // -------------------------------------------------------------
 // PHASE 2: VERIFY LATEST CHATBOT UI CHANGES IN PACKAGED XML

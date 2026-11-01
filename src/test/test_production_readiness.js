@@ -554,8 +554,8 @@ console.log('--- STARTING UPGRADE 5: PRODUCTION READINESS & OBSERVABILITY TESTS 
 
 // 18. Update-set packaging integrity
 (function testUpdateSetPackagingIntegrity() {
-    var globalXml = fs.readFileSync('update_sets/gmg_ai_agent_global.xml', 'utf8');
-    var scopedXml = fs.readFileSync('update_sets/gmg_ai_agent_scoped.xml', 'utf8');
+    var globalXml = fs.readFileSync('update_sets/now_pilot_global.xml', 'utf8');
+    var scopedXml = fs.readFileSync('update_sets/now_pilot_scoped.xml', 'utf8');
 
     assert(globalXml.indexOf('<sys_update_xml action=') >= 0, '18. Update-set integrity: Global update set has valid XML records');
     assert(scopedXml.indexOf('DiagnosticService') >= 0, '18. Update-set integrity: DiagnosticService is packaged in scoped XML');
@@ -729,7 +729,7 @@ console.log('--- STARTING UPGRADE 5: PRODUCTION READINESS & OBSERVABILITY TESTS 
     assert(origInc.short_description === 'Network connectivity degraded in Dallas datacenter', '21. PII Protection: Original GlideRecord record is unmodified');
 
     // --- Issue 5: Update Set & Menu Branding Verification ---
-    var scopedXml = fs.readFileSync('update_sets/gmg_ai_agent_scoped.xml', 'utf8');
+    var scopedXml = fs.readFileSync('update_sets/now_pilot_scoped.xml', 'utf8');
     assert(scopedXml.indexOf('&lt;title&gt;Now Pilot&lt;/title&gt;') >= 0, '21. Update Set: Application menu title branded as Now Pilot');
     assert(scopedXml.indexOf('redactPII') >= 0, '21. Update Set: redactPII is packaged in scoped XML');
     assert(scopedXml.indexOf('ALLOWED_TARGET_TABLES') >= 0, '21. Update Set: ALLOWED_TARGET_TABLES is packaged in scoped XML');

@@ -68,7 +68,7 @@ test('6. Composer: Pinned to bottom, auto-growing input, visible Send button', (
 
 // 7. XML Update Set Packaging Check
 test('7. XML Packaging: Double-escaping verified in global update set', () => {
-    const globalXml = fs.readFileSync('update_sets/gmg_ai_agent_global.xml', 'utf8');
+    const globalXml = fs.readFileSync('update_sets/now_pilot_global.xml', 'utf8');
     assert(globalXml.includes('grid-template-columns:repeat(2, minmax(0, 1fr))'), 'minmax(0, 1fr) grid tracks packaged in global XML');
     assert(globalXml.includes('max-width:calc(100vw - 32px)'), 'Panel bounds packaged in global XML');
 });

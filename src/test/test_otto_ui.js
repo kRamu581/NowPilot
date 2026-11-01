@@ -90,7 +90,7 @@ test('6. Event Handling: Internal clicks contained, outside clicks close cleanly
 
 // 7. Update Set Packaging
 test('7. Packaging: Double-escaping in XML update sets', () => {
-    const globalXml = fs.readFileSync('update_sets/gmg_ai_agent_global.xml', 'utf8');
+    const globalXml = fs.readFileSync('update_sets/now_pilot_global.xml', 'utf8');
     assert(globalXml.includes('&amp;lt;svg'), 'SVG tag is double-escaped in global XML');
     assert(globalXml.includes('--np-background:#EEECE8'), 'Otto design tokens packaged in global XML');
     assert(globalXml.includes('id=&amp;quot;gmgai-close&amp;quot;'), 'Close button packaged in global XML');
