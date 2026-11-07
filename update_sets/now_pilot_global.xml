@@ -1858,6 +1858,8 @@ GMGAIApplier.prototype = {
                 '&amp;lt;option value=&amp;quot;flow_designer&amp;quot;' + (s.dev_artifact == 'flow_designer' ? ' selected' : '') + '&amp;gt;Flow Designer Guidance&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;service_portal_widget&amp;quot;' + (s.dev_artifact == 'service_portal_widget' ? ' selected' : '') + '&amp;gt;Service Portal Widget&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;atf_test&amp;quot;' + (s.dev_artifact == 'atf_test' ? ' selected' : '') + '&amp;gt;ATF Test Plan &amp;amp;amp; Script&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;story_decomposition&amp;quot;' + (s.dev_artifact == 'story_decomposition' ? ' selected' : '') + '&amp;gt;Story Blueprint&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;code_refactor&amp;quot;' + (s.dev_artifact == 'code_refactor' ? ' selected' : '') + '&amp;gt;Senior Refactoring&amp;lt;/option&amp;gt;' +
                 '&amp;lt;/select&amp;gt;' +
                 '&amp;lt;label style=&amp;quot;font-weight:600;margin-left:4px&amp;quot;&amp;gt;Action:&amp;lt;/label&amp;gt;' +
                 '&amp;lt;select id=&amp;quot;gmgai-dev-action&amp;quot; class=&amp;quot;gmgai-select&amp;quot; style=&amp;quot;width:85px;min-width:0&amp;quot; aria-label=&amp;quot;Dev Action&amp;quot;&amp;gt;' +
@@ -1865,6 +1867,8 @@ GMGAIApplier.prototype = {
                 '&amp;lt;option value=&amp;quot;review&amp;quot;' + (s.dev_action == 'review' ? ' selected' : '') + '&amp;gt;Review&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;explain&amp;quot;' + (s.dev_action == 'explain' ? ' selected' : '') + '&amp;gt;Explain&amp;lt;/option&amp;gt;' +
                 '&amp;lt;option value=&amp;quot;debug&amp;quot;' + (s.dev_action == 'debug' ? ' selected' : '') + '&amp;gt;Debug&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;decompose&amp;quot;' + (s.dev_action == 'decompose' ? ' selected' : '') + '&amp;gt;Decompose&amp;lt;/option&amp;gt;' +
+                '&amp;lt;option value=&amp;quot;refactor&amp;quot;' + (s.dev_action == 'refactor' ? ' selected' : '') + '&amp;gt;Refactor&amp;lt;/option&amp;gt;' +
                 '&amp;lt;/select&amp;gt;&amp;lt;/div&amp;gt;' +
                 '&amp;lt;div style=&amp;quot;display:flex;gap:4px;align-items:center&amp;quot;&amp;gt;' +
                 '&amp;lt;label style=&amp;quot;font-weight:600;min-width:45px&amp;quot;&amp;gt;Table:&amp;lt;/label&amp;gt;' +

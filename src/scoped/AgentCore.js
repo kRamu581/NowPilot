@@ -786,6 +786,8 @@ AgentCore.prototype = {
                 else if (lowerPrompt.indexOf('atf') >= 0) artTypeToValidate = 'atf_test';
                 else if (lowerPrompt.indexOf('portal') >= 0 || lowerPrompt.indexOf('widget') >= 0) artTypeToValidate = 'service_portal_widget';
                 else if (lowerPrompt.indexOf('flow') >= 0) artTypeToValidate = 'flow_designer';
+                else if (lowerPrompt.indexOf('story') >= 0 || lowerPrompt.indexOf('decompose') >= 0 || lowerPrompt.indexOf('backlog') >= 0) artTypeToValidate = 'story_decomposition';
+                else if (lowerPrompt.indexOf('refactor') >= 0) artTypeToValidate = 'code_refactor';
             }
 
             if (codeToValidate && artTypeToValidate) {

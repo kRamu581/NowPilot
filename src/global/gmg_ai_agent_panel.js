@@ -1004,6 +1004,8 @@
                 '<option value="flow_designer"' + (s.dev_artifact == 'flow_designer' ? ' selected' : '') + '>Flow Designer Guidance</option>' +
                 '<option value="service_portal_widget"' + (s.dev_artifact == 'service_portal_widget' ? ' selected' : '') + '>Service Portal Widget</option>' +
                 '<option value="atf_test"' + (s.dev_artifact == 'atf_test' ? ' selected' : '') + '>ATF Test Plan &amp; Script</option>' +
+                '<option value="story_decomposition"' + (s.dev_artifact == 'story_decomposition' ? ' selected' : '') + '>Story Blueprint</option>' +
+                '<option value="code_refactor"' + (s.dev_artifact == 'code_refactor' ? ' selected' : '') + '>Senior Refactoring</option>' +
                 '</select>' +
                 '<label style="font-weight:600;margin-left:4px">Action:</label>' +
                 '<select id="gmgai-dev-action" class="gmgai-select" style="width:85px;min-width:0" aria-label="Dev Action">' +
@@ -1011,6 +1013,8 @@
                 '<option value="review"' + (s.dev_action == 'review' ? ' selected' : '') + '>Review</option>' +
                 '<option value="explain"' + (s.dev_action == 'explain' ? ' selected' : '') + '>Explain</option>' +
                 '<option value="debug"' + (s.dev_action == 'debug' ? ' selected' : '') + '>Debug</option>' +
+                '<option value="decompose"' + (s.dev_action == 'decompose' ? ' selected' : '') + '>Decompose</option>' +
+                '<option value="refactor"' + (s.dev_action == 'refactor' ? ' selected' : '') + '>Refactor</option>' +
                 '</select></div>' +
                 '<div style="display:flex;gap:4px;align-items:center">' +
                 '<label style="font-weight:600;min-width:45px">Table:</label>' +

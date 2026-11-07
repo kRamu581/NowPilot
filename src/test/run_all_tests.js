@@ -7,7 +7,8 @@ const testSuites = [
     { file: 'src/test/test_dev_assistant.js', name: 'Dev Assistant' },
     { file: 'src/test/test_itsm_intelligence.js', name: 'ITSM Intelligence' },
     { file: 'src/test/test_omniroute.js', name: 'OmniRoute Multi-Model' },
-    { file: 'src/test/test_workflow_automation.js', name: 'Workflow Automation' }
+    { file: 'src/test/test_workflow_automation.js', name: 'Workflow Automation' },
+    { file: 'src/test/test_pillar1_backlog_uplift.js', name: 'Pillar 1 Backlog Uplift' }
 ];
 
 console.log('----------------------------------------------------------------------');

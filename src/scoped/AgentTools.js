@@ -91,6 +91,25 @@ AgentTools.prototype = {
              parameters: {type: 'object', properties: {
                  code: {type: 'string', description: 'JavaScript code to review'},
                  artifact_type: {type: 'string', description: 'Artifact type'}
+             }, required: ['code']}},
+            {name: 'decompose_story',
+             description: 'Decompose a ServiceNow business user story or enhancement into a complete architectural blueprint with OOTB recommendations, components, story points, and ATF plan. Read-only.',
+             parameters: {type: 'object', properties: {
+                 story_text: {type: 'string', description: 'Business user story or enhancement requirement text'},
+                 table: {type: 'string', description: 'Target ServiceNow table (e.g. incident, change_request)'}
+             }, required: ['story_text']}},
+            {name: 'generate_atf_test',
+             description: 'Generate automated test framework (ATF) steps and server-side Jasmine assertion scripts for a ServiceNow table or form. Read-only.',
+             parameters: {type: 'object', properties: {
+                 table: {type: 'string', description: 'Target ServiceNow table (e.g. incident)'},
+                 test_name: {type: 'string', description: 'Optional custom name for the ATF test'},
+                 field_values: {type: 'object', description: 'Optional initial field key-value pairs'}
+             }, required: ['table']}},
+            {name: 'refactor_dev_code',
+             description: 'Refactor ServiceNow script anti-patterns (recursive update in before BR, synchronous client GlideRecord to GlideAjax, unbounded queries, hardcoded sys_ids) into CTA-grade code. Read-only.',
+             parameters: {type: 'object', properties: {
+                 code: {type: 'string', description: 'JavaScript code to refactor'},
+                 artifact_type: {type: 'string', description: 'Artifact type, e.g. business_rule, client_script'}
              }, required: ['code']}}
         ];
     },
@@ -113,6 +132,24 @@ AgentTools.prototype = {
             if (name == 'review_dev_artifact') {
                 if (typeof WorkflowEngine != 'undefined') return new WorkflowEngine()._executeDevReview(args);
                 return {error: 'WorkflowEngine not installed.'};
+            }
+            if (name == 'decompose_story') {
+                if (typeof DevAssistant != 'undefined' && DevAssistant.decomposeStory) {
+                    return DevAssistant.decomposeStory(args.story_text || '', args);
+                }
+                return {error: 'DevAssistant not installed or decomposeStory not available.'};
+            }
+            if (name == 'generate_atf_test') {
+                if (typeof DevAssistant != 'undefined' && DevAssistant.generateATF) {
+                    return DevAssistant.generateATF(args);
+                }
+                return {error: 'DevAssistant not installed or generateATF not available.'};
+            }
+            if (name == 'refactor_dev_code') {
+                if (typeof DevAssistant != 'undefined' && DevAssistant.refactorCode) {
+                    return DevAssistant.refactorCode(args.code || '', args.artifact_type || 'business_rule', args);
+                }
+                return {error: 'DevAssistant not installed or refactorCode not available.'};
             }
             return {error: 'Unknown tool ' + name};
         } catch (e) {

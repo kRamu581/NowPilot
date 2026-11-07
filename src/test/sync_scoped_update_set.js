@@ -26,7 +26,9 @@ const filesToSync = [
     'ITSMAssistant',
     'WorkflowPlanner',
     'WorkflowEngine',
-    'ITSMContextBuilder'
+    'ITSMContextBuilder',
+    'DevAssistant',
+    'AgentTools'
 ];
 
 filesToSync.forEach(name => {
