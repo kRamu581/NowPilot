@@ -28,6 +28,7 @@ All outbound HTTP connections to AI providers, gateways, and web endpoints pass 
 - **Cloud Metadata Protection**: Requests to AWS/GCP/Azure instance metadata endpoints (`169.254.169.254` / `fd00:ec2::254`) are strictly blocked.
 - **Private Subnet Protection**: Private network ranges (RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) and carrier-grade NAT blocks are forbidden.
 - **Loopback Enforcement**: Local loopback addresses (`127.0.0.1`, `localhost`, `::1`) are blocked by default. They can only be enabled in local development lab environments with the explicit platform property `x_gmg_ai.allow_http_localhost = true`.
+- **Self-Hosted Models (Ollama / vLLM / Local NIM)**: For self-hosted LLM endpoints hosted on private internal subnets (RFC 1918: `10.x`, `192.168.x`), outbound requests from cloud-hosted ServiceNow nodes are blocked by design. Route traffic through an HTTPS reverse proxy with a valid FQDN or use a secure gateway.
 - **Protocol Enforcement**: Remote providers must use encrypted HTTPS. Credentials embedded in URLs (`user:pass@host`) are rejected.
 
 ### 3. Native Platform Authorization (`GlideRecordSecure`)

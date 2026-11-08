@@ -76,6 +76,13 @@ LLMAdapter.PROVIDERS = {
         default_model: 'hunyuan-mt-7b',
         type: 'openai_compatible'
     },
+    'anthropic': {
+        id: 'anthropic',
+        name: 'Anthropic Claude',
+        default_base_url: 'https://api.anthropic.com/v1',
+        default_model: 'claude-3-5-sonnet-20241022',
+        type: 'anthropic'
+    },
     'ollama': {
         id: 'ollama',
         name: 'Ollama (Local)',
@@ -137,11 +144,17 @@ LLMAdapter.MODEL_CATALOG = {
     // 9. Additional Models
     'hunyuan-mt-7b': { provider: 'specialty', name: 'Hunyuan MT 7B', capabilities: ['translation', 'text'], supportsVision: false, supportsReasoning: false, supportsTools: false },
     'liquid/lfm-2.5-2.6b': { provider: 'specialty', name: 'LFM 2.5 2.6B', capabilities: ['text', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
-    'xing-4.0-29b': { provider: 'specialty', name: 'Xing 4.0 29B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false }
+    'xing-4.0-29b': { provider: 'specialty', name: 'Xing 4.0 29B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+
+    // 10. Anthropic Claude (Native Provider)
+    'claude-3-5-sonnet-20241022': { provider: 'anthropic', name: 'Claude 3.5 Sonnet', capabilities: ['text', 'code', 'vision', 'tools', 'fast'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+    'claude-3-5-haiku-20241022': { provider: 'anthropic', name: 'Claude 3.5 Haiku', capabilities: ['text', 'code', 'fast', 'tools'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+    'claude-3-opus-20240229': { provider: 'anthropic', name: 'Claude 3 Opus', capabilities: ['text', 'code', 'vision', 'tools'], supportsVision: true, supportsReasoning: false, supportsTools: true }
 };
 
 LLMAdapter.normalizeProviderId = function(typeOrName) {
     var s = String(typeOrName || '').toLowerCase().trim();
+    if (s.indexOf('anthropic') >= 0 || s.indexOf('claude') >= 0) return 'anthropic';
     if (s.indexOf('deepseek') >= 0) return 'deepseek';
     if (s.indexOf('z.ai') >= 0 || s.indexOf('zai') >= 0 || s.indexOf('zhipu') >= 0 || s.indexOf('glm') >= 0) return 'zai';
     if (s.indexOf('qwen') >= 0 || s.indexOf('dashscope') >= 0 || s.indexOf('alibaba') >= 0) return 'qwen';
@@ -176,6 +189,23 @@ LLMAdapter.getModelInfo = function(modelId) {
 
 LLMAdapter.isCatalogModel = function(modelId) {
     return !!LLMAdapter.getModelInfo(modelId);
+};
+
+LLMAdapter.isModelAllowedForProvider = function(modelId, providerTypeOrName, providerDefaultModel) {
+    var m = String(modelId || '').trim();
+    if (!m) return false;
+    if (providerDefaultModel && m === String(providerDefaultModel).trim()) return true;
+
+    var info = LLMAdapter.getModelInfo(m);
+    if (!info) return false;
+
+    if (providerTypeOrName) {
+        var pid = LLMAdapter.normalizeProviderId(providerTypeOrName);
+        if (pid && pid !== 'openai_compatible') {
+            return info.provider === pid;
+        }
+    }
+    return true;
 };
 
 LLMAdapter.getModelsForProvider = function(typeOrName, provName) {
@@ -609,8 +639,22 @@ LLMAdapter.prototype = {
             }
         });
         if (opts && opts.final_note) msgs.push({role: 'user', content: LLMAdapter.sanitizeOutboundText(opts.final_note)});
-        var body = {model: pCfg.model, messages: msgs, max_tokens: pCfg.max_tokens};
-        if (tools && tools.length) {
+        
+        var isReasoningModel = false;
+        var modelInfo = LLMAdapter.getModelInfo(pCfg.model);
+        if (modelInfo && modelInfo.supportsReasoning) isReasoningModel = true;
+        if (/^(o1|o3|deepseek-reasoner|glm-z1)/i.test(pCfg.model || '')) isReasoningModel = true;
+
+        var body = {model: pCfg.model, messages: msgs};
+        if (isReasoningModel) {
+            // Reasoning models reject custom temperature or frequency penalty; use max_completion_tokens
+            if (pCfg.max_tokens) body.max_completion_tokens = pCfg.max_tokens;
+        } else {
+            if (pCfg.max_tokens) body.max_tokens = pCfg.max_tokens;
+            if (opts && typeof opts.temperature === 'number') body.temperature = opts.temperature;
+        }
+
+        if (tools && tools.length && (!modelInfo || modelInfo.supportsTools !== false)) {
             body.tools = tools.map(function(t) {
                 return {type: 'function', 'function': {name: t.name, description: t.description, parameters: t.parameters}};
             });

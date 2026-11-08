@@ -548,6 +548,13 @@ LLMAdapter.PROVIDERS = {
         default_model: 'hunyuan-mt-7b',
         type: 'openai_compatible'
     },
+    'anthropic': {
+        id: 'anthropic',
+        name: 'Anthropic Claude',
+        default_base_url: 'https://api.anthropic.com/v1',
+        default_model: 'claude-3-5-sonnet-20241022',
+        type: 'anthropic'
+    },
     'ollama': {
         id: 'ollama',
         name: 'Ollama (Local)',
@@ -609,11 +616,17 @@ LLMAdapter.MODEL_CATALOG = {
     // 9. Additional Models
     'hunyuan-mt-7b': { provider: 'specialty', name: 'Hunyuan MT 7B', capabilities: ['translation', 'text'], supportsVision: false, supportsReasoning: false, supportsTools: false },
     'liquid/lfm-2.5-2.6b': { provider: 'specialty', name: 'LFM 2.5 2.6B', capabilities: ['text', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
-    'xing-4.0-29b': { provider: 'specialty', name: 'Xing 4.0 29B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false }
+    'xing-4.0-29b': { provider: 'specialty', name: 'Xing 4.0 29B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+
+    // 10. Anthropic Claude (Native Provider)
+    'claude-3-5-sonnet-20241022': { provider: 'anthropic', name: 'Claude 3.5 Sonnet', capabilities: ['text', 'code', 'vision', 'tools', 'fast'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+    'claude-3-5-haiku-20241022': { provider: 'anthropic', name: 'Claude 3.5 Haiku', capabilities: ['text', 'code', 'fast', 'tools'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+    'claude-3-opus-20240229': { provider: 'anthropic', name: 'Claude 3 Opus', capabilities: ['text', 'code', 'vision', 'tools'], supportsVision: true, supportsReasoning: false, supportsTools: true }
 };
 
 LLMAdapter.normalizeProviderId = function(typeOrName) {
     var s = String(typeOrName || '').toLowerCase().trim();
+    if (s.indexOf('anthropic') &amp;gt;= 0 || s.indexOf('claude') &amp;gt;= 0) return 'anthropic';
     if (s.indexOf('deepseek') &amp;gt;= 0) return 'deepseek';
     if (s.indexOf('z.ai') &amp;gt;= 0 || s.indexOf('zai') &amp;gt;= 0 || s.indexOf('zhipu') &amp;gt;= 0 || s.indexOf('glm') &amp;gt;= 0) return 'zai';
     if (s.indexOf('qwen') &amp;gt;= 0 || s.indexOf('dashscope') &amp;gt;= 0 || s.indexOf('alibaba') &amp;gt;= 0) return 'qwen';
@@ -648,6 +661,23 @@ LLMAdapter.getModelInfo = function(modelId) {
 
 LLMAdapter.isCatalogModel = function(modelId) {
     return !!LLMAdapter.getModelInfo(modelId);
+};
+
+LLMAdapter.isModelAllowedForProvider = function(modelId, providerTypeOrName, providerDefaultModel) {
+    var m = String(modelId || '').trim();
+    if (!m) return false;
+    if (providerDefaultModel &amp;amp;&amp;amp; m === String(providerDefaultModel).trim()) return true;
+
+    var info = LLMAdapter.getModelInfo(m);
+    if (!info) return false;
+
+    if (providerTypeOrName) {
+        var pid = LLMAdapter.normalizeProviderId(providerTypeOrName);
+        if (pid &amp;amp;&amp;amp; pid !== 'openai_compatible') {
+            return info.provider === pid;
+        }
+    }
+    return true;
 };
 
 LLMAdapter.getModelsForProvider = function(typeOrName, provName) {
@@ -1081,8 +1111,22 @@ LLMAdapter.prototype = {
             }
         });
         if (opts &amp;amp;&amp;amp; opts.final_note) msgs.push({role: 'user', content: LLMAdapter.sanitizeOutboundText(opts.final_note)});
-        var body = {model: pCfg.model, messages: msgs, max_tokens: pCfg.max_tokens};
-        if (tools &amp;amp;&amp;amp; tools.length) {
+        
+        var isReasoningModel = false;
+        var modelInfo = LLMAdapter.getModelInfo(pCfg.model);
+        if (modelInfo &amp;amp;&amp;amp; modelInfo.supportsReasoning) isReasoningModel = true;
+        if (/^(o1|o3|deepseek-reasoner|glm-z1)/i.test(pCfg.model || '')) isReasoningModel = true;
+
+        var body = {model: pCfg.model, messages: msgs};
+        if (isReasoningModel) {
+            // Reasoning models reject custom temperature or frequency penalty; use max_completion_tokens
+            if (pCfg.max_tokens) body.max_completion_tokens = pCfg.max_tokens;
+        } else {
+            if (pCfg.max_tokens) body.max_tokens = pCfg.max_tokens;
+            if (opts &amp;amp;&amp;amp; typeof opts.temperature === 'number') body.temperature = opts.temperature;
+        }
+
+        if (tools &amp;amp;&amp;amp; tools.length &amp;amp;&amp;amp; (!modelInfo || modelInfo.supportsTools !== false)) {
             body.tools = tools.map(function(t) {
                 return {type: 'function', 'function': {name: t.name, description: t.description, parameters: t.parameters}};
             });
@@ -2928,11 +2972,10 @@ AgentCore.isModelAllowed = function(modelName, providerDefaultModel, providerTyp
     }
     // Provider's configured default model is always valid
     if (providerDefaultModel &amp;amp;&amp;amp; modelName === String(providerDefaultModel).trim()) return true;
-    // Recognized models in the multi-provider catalog
-    if (typeof LLMAdapter != 'undefined' &amp;amp;&amp;amp; typeof LLMAdapter.isCatalogModel == 'function') {
-        if (LLMAdapter.isCatalogModel(modelName)) return true;
+    // Fail-closed provider-tied catalog check: model must belong to this specific provider
+    if (typeof LLMAdapter != 'undefined' &amp;amp;&amp;amp; typeof LLMAdapter.isModelAllowedForProvider == 'function') {
+        return LLMAdapter.isModelAllowedForProvider(modelName, providerTypeOrName, providerDefaultModel);
     }
-    // Fail-closed when no allowlist is configured and not in catalog
     return false;
 };
 
@@ -3207,7 +3250,9 @@ AgentCore.prototype = {
         // Fail-closed model validation
         var requestedModel = payload.model ? String(payload.model).trim() : '';
         if (requestedModel) {
-            if (!AgentCore.isModelAllowed(requestedModel, pgr.getValue('model'), pgr.getValue('type') || pgr.getValue('name'))) {
+            var provIdent = pgr.getValue('name');
+        if (!provIdent || provIdent === 'openai_compatible') provIdent = pgr.getValue('type');
+        if (!AgentCore.isModelAllowed(requestedModel, pgr.getValue('model'), provIdent)) {
                 out.error = 'Model &amp;quot;' + requestedModel + '&amp;quot; is not authorized. Valid models must be explicitly configured in x_gmg_ai.model_allowlist.';
                 out.error_code = (typeof DiagnosticService != 'undefined') ? DiagnosticService.ERRORS.CONFIG_ERROR : 'CONFIG_ERROR';
                 out.rejected = true;

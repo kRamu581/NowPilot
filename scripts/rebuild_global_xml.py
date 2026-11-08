@@ -31,12 +31,14 @@ escaped_code = escape_for_payload(src)
 new_block = block[:s_start + len(script_start_tag)] + escaped_code + block[s_end:]
 new_xml = xml[:start_update] + new_block + xml[end_update:]
 
-Path('update_sets/now_pilot_global.xml').write_text(new_xml, encoding='utf-8')
+with open('update_sets/now_pilot_global.xml', 'w', encoding='utf-8', newline='\n') as f:
+    f.write(new_xml.replace('\r\n', '\n'))
 
-# update SHA256SUMS
+# update SHA256SUMS with canonical LF hash
 gh = hashlib.sha256(Path('update_sets/now_pilot_global.xml').read_bytes()).hexdigest()
 sh = hashlib.sha256(Path('update_sets/now_pilot_scoped.xml').read_bytes()).hexdigest()
-Path('SHA256SUMS').write_text(f'{gh}  update_sets/now_pilot_global.xml\n{sh}  update_sets/now_pilot_scoped.xml\n', encoding='utf-8')
+with open('SHA256SUMS', 'w', encoding='utf-8', newline='\n') as f:
+    f.write(f'{gh}  update_sets/now_pilot_global.xml\n{sh}  update_sets/now_pilot_scoped.xml\n')
 
 print('Successfully embedded gmg_ai_agent_panel.js into now_pilot_global.xml and gmg_ai_agent_global.xml')
 print('New global SHA256:', gh)

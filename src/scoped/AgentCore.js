@@ -116,11 +116,10 @@ AgentCore.isModelAllowed = function(modelName, providerDefaultModel, providerTyp
     }
     // Provider's configured default model is always valid
     if (providerDefaultModel && modelName === String(providerDefaultModel).trim()) return true;
-    // Recognized models in the multi-provider catalog
-    if (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.isCatalogModel == 'function') {
-        if (LLMAdapter.isCatalogModel(modelName)) return true;
+    // Fail-closed provider-tied catalog check: model must belong to this specific provider
+    if (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.isModelAllowedForProvider == 'function') {
+        return LLMAdapter.isModelAllowedForProvider(modelName, providerTypeOrName, providerDefaultModel);
     }
-    // Fail-closed when no allowlist is configured and not in catalog
     return false;
 };
 
@@ -395,7 +394,9 @@ AgentCore.prototype = {
         // Fail-closed model validation
         var requestedModel = payload.model ? String(payload.model).trim() : '';
         if (requestedModel) {
-            if (!AgentCore.isModelAllowed(requestedModel, pgr.getValue('model'), pgr.getValue('type') || pgr.getValue('name'))) {
+            var provIdent = pgr.getValue('name');
+        if (!provIdent || provIdent === 'openai_compatible') provIdent = pgr.getValue('type');
+        if (!AgentCore.isModelAllowed(requestedModel, pgr.getValue('model'), provIdent)) {
                 out.error = 'Model "' + requestedModel + '" is not authorized. Valid models must be explicitly configured in x_gmg_ai.model_allowlist.';
                 out.error_code = (typeof DiagnosticService != 'undefined') ? DiagnosticService.ERRORS.CONFIG_ERROR : 'CONFIG_ERROR';
                 out.rejected = true;

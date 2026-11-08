@@ -384,6 +384,78 @@ it('LLMAdapter prevents SSRF attacks on provider base URLs', () => {
     assert.ok(res.error.includes('security validation failed'));
 });
 
+// Test 15: Provider-isolated allowlist binding
+it('AgentCore.isModelAllowed enforces provider-isolated model boundaries', () => {
+    // When requesting deepseek-chat on DeepSeek provider -> allowed
+    assert.strictEqual(AgentCore.isModelAllowed('deepseek-chat', 'deepseek-chat', 'DeepSeek Production'), true);
+    // When requesting deepseek-reasoner on DeepSeek provider -> allowed
+    assert.strictEqual(AgentCore.isModelAllowed('deepseek-reasoner', 'deepseek-chat', 'DeepSeek Production'), true);
+    // Cross-provider spoofing: requesting gpt-4o through DeepSeek provider -> REJECTED
+    assert.strictEqual(AgentCore.isModelAllowed('gpt-4o', 'deepseek-chat', 'DeepSeek Production'), false);
+    // Cross-provider spoofing: requesting claude on OpenAI provider -> REJECTED
+    assert.strictEqual(AgentCore.isModelAllowed('claude-3-5-sonnet-20241022', 'gpt-4o-mini', 'OpenAI Production'), false);
+    // Requesting claude on Anthropic provider -> allowed
+    assert.strictEqual(AgentCore.isModelAllowed('claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-20241022', 'Anthropic Claude'), true);
+});
+
+// Test 16: Parameter stripping for reasoning models
+it('LLMAdapter._openai strips temperature for reasoning models', () => {
+    let capturedBody = null;
+    const provGr = {
+        sys_id: '11112222333344445555666677778888',
+        name: 'DeepSeek',
+        type: 'openai_compatible',
+        model: 'deepseek-reasoner',
+        key: 'sk-test-key'
+    };
+
+    const adapter = new LLMAdapter(provGr);
+    adapter._post = (url, headers, body) => {
+        capturedBody = body;
+        return {
+            ok: true,
+            status: 200,
+            json: { choices: [{ message: { role: 'assistant', content: 'reasoning result' } }] }
+        };
+    };
+
+    adapter.chat('system', [{ role: 'user', content: 'solve puzzle' }], [], { temperature: 0.7 });
+    assert.ok(capturedBody, 'HTTP body should be captured');
+    assert.strictEqual(capturedBody.temperature, undefined, 'Reasoning model must strip temperature');
+    assert.ok(capturedBody.max_completion_tokens, 'Reasoning model should use max_completion_tokens');
+});
+
+// Test 17: Native Anthropic Claude provider support
+it('LLMAdapter supports native Anthropic Claude protocol', () => {
+    let capturedAnthropicBody = null;
+    const provGr = {
+        sys_id: 'claude_prov_01',
+        name: 'Claude 3.5 Sonnet',
+        type: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        key: 'sk-ant-api03-test'
+    };
+
+    const adapter = new LLMAdapter(provGr);
+    adapter._post = (url, headers, body) => {
+        capturedAnthropicBody = body;
+        assert.ok(headers['x-api-key'], 'Anthropic header x-api-key must be present');
+        return {
+            ok: true,
+            status: 200,
+            json: {
+                content: [{ type: 'text', text: 'Hello from Claude' }],
+                usage: { input_tokens: 10, output_tokens: 5 }
+            }
+        };
+    };
+
+    const res = adapter.chat('system', [{ role: 'user', content: 'hi' }]);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.text, 'Hello from Claude');
+    assert.strictEqual(capturedAnthropicBody.model, 'claude-3-5-sonnet-20241022');
+});
+
 console.log('----------------------------------------------------------------------');
 console.log('Suite 9 Functional Tests: ' + passCount + ' passed, ' + failCount + ' failed.');
 console.log('----------------------------------------------------------------------');
