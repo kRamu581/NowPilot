@@ -266,7 +266,7 @@ global.sn_ws = {
                         '2. **Step 2 (Read):** Scan CMDB dependencies to check affected downstream services.\n' +
                         '3. **Step 3 (Proposal):** Generate proposed resolution work notes and submit for review.';
             } else {
-                reply = 'I am Now Pilot for ServiceNow (v1.5.0) — From Ticket to Takeoff. Built by Kanam Ramu.\n\n' +
+                reply = 'I am Now Pilot for ServiceNow (v2.0.0) — From Ticket to Takeoff. Built by Kanam Ramu.\n\n' +
                         'I am connected to your instance and ready to help you investigate incidents, review ServiceNow developer artifacts, or automate multi-step workflows.';
             }
 
@@ -594,7 +594,7 @@ const server = http.createServer((req, res) => {
         <div class="title">
             <img src="/assets/now_pilot_logo.png" alt="Now Pilot for ServiceNow" style="width:28px;height:28px;object-fit:contain;border-radius:50%;background:#080808;border:1px solid #303030;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.5)" />
             <span>ServiceNow Platform (Local Environment)</span>
-            <span class="badge" style="background:#168B50;color:#ffffff;font-weight:600">Now Pilot v1.5.0</span>
+            <span class="badge" style="background:#168B50;color:#ffffff;font-weight:600">Now Pilot v2.0.0</span>
             <span style="margin-left:8px;font-size:12px;color:#A3A3A3">From Ticket to Takeoff. &middot; Built by Kanam Ramu</span>
         </div>
         <div>
@@ -661,7 +661,7 @@ server.listen(PORT, () => {
     console.log('\n================================================================');
     console.log('  NOW PILOT FOR SERVICENOW - LOCAL APPLICATION RUNNER');
     console.log('  Tagline: From Ticket to Takeoff. | Built by Kanam Ramu');
-    console.log('  Release: v1.5.0 (Production Readiness & Observability)');
+    console.log('  Release: v2.0.0 (Pillar 1 Backlog Uplift & CTA Architecture)');
     console.log('================================================================');
     console.log(`\n  >> Running at: http://localhost:${PORT}/incident.do`);
     console.log(`  >> Health API: http://localhost:${PORT}/api/x_gmg_ai/agent/health`);
