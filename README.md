@@ -10,7 +10,6 @@
 
 [![Version](https://img.shields.io/badge/release-v2.0.0-168B50.svg?style=flat-square)](https://github.com/kRamu581/NowPilot)
 [![License](https://img.shields.io/badge/license-Apache--2.0-080808.svg?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-224%2F224%20passing-168B50.svg?style=flat-square)](src/test)
 [![ServiceNow](https://img.shields.io/badge/ServiceNow-Xanadu%20%7C%20Washington%20%7C%20Vancouver%20%7C%20Utah%20%7C%20Brazil-151515.svg?style=flat-square)](INSTALL.md)
 [![Stars](https://img.shields.io/github/stars/kRamu581/NowPilot?style=flat-square&color=168B50)](https://github.com/kRamu581/NowPilot/stargazers)
 [![Forks](https://img.shields.io/github/forks/kRamu581/NowPilot?style=flat-square)](https://github.com/kRamu581/NowPilot/network/members)
@@ -22,7 +21,6 @@
   <a href="#why-teams-are-switching">Why Now Pilot</a> •
   <a href="#see-it-in-60-seconds">Quick Start</a> •
   <a href="#core-capabilities">Features</a> •
-  <a href="#automated-test-suites-224224-passing">Tests</a> •
   <a href="#architecture">Architecture</a>
 </p>
 
@@ -144,37 +142,6 @@ Follow the 11-step walkthrough in **→ [INSTALL.md](INSTALL.md)**:
 
 ---
 
-## 🧪 Automated Test Suites (224/224 Passing)
-
-Every release of NowPilot is rigorously validated by **224 automated unit tests across 8 suites** that execute offline with zero network dependencies:
-
-| Suite # | Test Suite | File | Tests | Status |
-|:---:|---|---|:---:|:---:|
-| 1 | **Responsive Layout** | `src/test/test_responsive_layout.js` | 7 | ✅ Passed |
-| 2 | **Otto UI Redesign** | `src/test/test_otto_ui.js` | 7 | ✅ Passed |
-| 3 | **Production Readiness** | `src/test/test_production_readiness.js` | 107 | ✅ Passed |
-| 4 | **Dev Assistant** | `src/test/test_dev_assistant.js` | 20 | ✅ Passed |
-| 5 | **ITSM Intelligence** | `src/test/test_itsm_intelligence.js` | 22 | ✅ Passed |
-| 6 | **OmniRoute Multi-Model** | `src/test/test_omniroute.js` | 13 | ✅ Passed |
-| 7 | **Workflow Automation** | `src/test/test_workflow_automation.js` | 22 | ✅ Passed |
-| 8 | **Pillar 1 Backlog Uplift** | `src/test/test_pillar1_backlog_uplift.js` | 26 | ✅ Passed |
-| **Total** | **All Test Suites** | `node src/test/run_all_tests.js` | **224** | **100% Passed (0 Failed)** |
-
-### Run Tests Locally:
-
-```bash
-# Run all 224 functional test suites
-node src/test/run_all_tests.js
-
-# Verify exact byte-for-byte parity between source code and update set XMLs
-node src/test/audit_xml.js
-
-# Verify ServiceNow Retrieved Update Set XML syntax
-node src/test/verify_servicenow_format.js
-```
-
----
-
 ## Architecture
 
 ```mermaid
@@ -244,7 +211,7 @@ NowPilot/
 │   ├── global/                           # Global UI script (gmg_ai_agent_panel.js)
 │   ├── scoped/                           # AgentCore, DevAssistant, DevValidator, LLMAdapter...
 │   ├── assets/                           # Vector logos and favicons
-│   └── test/                             # 224 unit tests across 8 suites
+│   └── test/                             # Offline unit tests
 └── scripts/
     └── rebuild_global_xml.py             # Packaging sync utility
 ```
