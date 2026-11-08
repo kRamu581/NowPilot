@@ -30,34 +30,27 @@
 
 ## 🚀 What's New in v2.0
 
-Version 2.0 introduces **Pillar 1: Slashing the Backlog & Bridging the Talent Shortage**, directly addressing the enterprise failure points where platform teams get stuck on legacy backlogs, painful upgrades, and junior coding debt.
+**Pillar 1 — cut the backlog, raise code quality.** Three tools that help teams move faster without writing unsafe platform code.
 
-### 1. 🏛️ Backlog Story Decomposer (`DevAssistant.StoryDecomposer`)
-Turns vague business stories, enhancements, or Jira requests into production-grade Certified Technical Architect (CTA) blueprints before touching code:
-- **Out-of-the-Box (OOTB) First:** Enforces platform longevity by recommending OOTB UI Policies over Client Scripts and Flow Designer over hardcoded Business Rule notifications.
-- **Complete Component Decomposition:** Automatically itemizes every needed artifact: UI Policies, Flows, Before Business Rules, Script Includes, and ACLs.
-- **Agile Governance:** Calculates Fibonacci story points (`1, 2, 3, 5, 8, 13`), complexity rankings (`Low`, `Medium`, `High`), risk factors, and Given-When-Then BDD acceptance criteria.
+### 1. Backlog Story Decomposer
+Turn a vague story or Jira ticket into a clear build plan *before* anyone writes code.
 
-### 2. 🧪 Automated Test Framework (ATF) Engine (`DevAssistant.ATFGenerator`)
-Upgrades stall when manual regression testing takes weeks. NowPilot eliminates the testing backlog by auto-generating production-ready ATF suites:
-- **Form Steps:** Sequential generation of `impersonate`, `open_a_new_form`, `set_field_values`, `field_state_validation` (mandatory & read-only enforcement), and `submit_a_form`.
-- **Self-Cleaning Jasmine Server Scripts:** Complete Jasmine BDD assertion scripts for native ATF step *Run Server Side Script* with fixture creation (`beforeEach`), assertions (`it`), and zero-residual database teardown (`afterEach`).
+- Prefer **OOTB** (UI Policies, Flow Designer) over custom scripts when it fits  
+- List what you need: UI Policies, Flows, Business Rules, Script Includes, ACLs  
+- Suggest story points, risk, and simple Given / When / Then acceptance criteria  
 
-### 3. 🛠️ Senior Architect Code Refactorer (`DevAssistant.ArchitectRefactorer`)
-Bridges the talent gap by acting as an automated Senior Architect reviewing and rewriting junior code:
-- **Removes `current.update()` Recursion:** Eliminates recursive updates in `before` Business Rules that cause stack overflows and database transaction locks.
-- **Synchronous Client `GlideRecord` → Asynchronous `GlideAjax`:** Automatically replaces UI-freezing client scripts with `GlideAjax` (`getXMLAnswer`) and **generates the companion server-side `Script Include`** extending `global.AbstractAjaxProcessor`.
-- **Unbounded Query Guards:** Injects defensive `setLimit(500)` before `gr.query()` to prevent heap memory exhaustion.
-- **Sys_ID Externalization:** Replaces hardcoded 32-character hexadecimal sys_ids with dynamic `gs.getProperty` lookups.
-- **N+1 Loop Detection:** Flags `new GlideRecord` queries inside iteration loops.
+### 2. ATF Engine
+Generate Automated Test Framework ideas so upgrades and releases are not blocked by weeks of manual testing.
 
-### 4. 🎨 Otto UI Design System
-- Sleek floating sidecar widget with emerald branding tokens and responsive layout.
-- Native, frictionless text entry with support for multi-line inputs and shortcut prompts.
-- Interactive proposal cards with syntax-highlighted code diffs and 1-click **Accept / Reject**.
+- Form steps: open form, set fields, check mandatory / read-only, submit  
+- Server-side test script outlines (setup → assert → clean up)  
 
-### 5. 🤖 Google Gemini 2.0 Flash Native Integration
-- Built-in provider support for `gemini-2.0-flash` alongside Claude 3.5 Sonnet, GPT-4o, and local models via OmniRoute.
+### 3. Senior Architect Code Refactorer
+Review and rewrite risky junior patterns into safer ServiceNow code.
+
+- Remove **`current.update()`** inside *before* Business Rules (recursion risk)  
+- Replace sync client `GlideRecord` with **GlideAjax** + server Script Include  
+- Add **`setLimit`** on large queries; avoid hardcoded sys_ids; flag N+1 loops  
 
 ---
 
