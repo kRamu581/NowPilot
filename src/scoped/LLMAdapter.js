@@ -11,6 +11,219 @@ LLMAdapter.forceByOnlyTool = function(body, name) { body.tools = (body.tools || 
 /* architecture review: per-model capability flags */
 LLMAdapter.MODEL_CAPS = {'claude-sonnet-5-5': {supportsForcedTool: false}};
 
+/* ---- Unified Multi-Provider Registry & Model Catalog ---- */
+LLMAdapter.PROVIDERS = {
+    'deepseek': {
+        id: 'deepseek',
+        name: 'DeepSeek',
+        default_base_url: 'https://api.deepseek.com',
+        default_model: 'deepseek-chat',
+        type: 'openai_compatible'
+    },
+    'zai': {
+        id: 'zai',
+        name: 'Z.ai (GLM)',
+        default_base_url: 'https://open.bigmodel.cn/api/paas/v4',
+        default_model: 'glm-4-flash',
+        type: 'openai_compatible'
+    },
+    'qwen': {
+        id: 'qwen',
+        name: 'Qwen',
+        default_base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        default_model: 'qwen2.5-7b-instruct',
+        type: 'openai_compatible'
+    },
+    'google': {
+        id: 'google',
+        name: 'Google',
+        default_base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        default_model: 'gemini-2.0-flash',
+        type: 'openai_compatible'
+    },
+    'openai': {
+        id: 'openai',
+        name: 'OpenAI',
+        default_base_url: 'https://api.openai.com/v1',
+        default_model: 'gpt-4o-mini',
+        type: 'openai_compatible'
+    },
+    'meta': {
+        id: 'meta',
+        name: 'Meta',
+        default_base_url: 'https://api.groq.com/openai/v1',
+        default_model: 'meta-llama/llama-3.1-8b-instruct',
+        type: 'openai_compatible'
+    },
+    'mistral': {
+        id: 'mistral',
+        name: 'Mistral',
+        default_base_url: 'https://api.mistral.ai/v1',
+        default_model: 'mistral-small-3.2-24b',
+        type: 'openai_compatible'
+    },
+    'nvidia': {
+        id: 'nvidia',
+        name: 'NVIDIA',
+        default_base_url: 'https://integrate.api.nvidia.com/v1',
+        default_model: 'nvidia/nemotron-3-nano-omni-30b',
+        type: 'openai_compatible'
+    },
+    'specialty': {
+        id: 'specialty',
+        name: 'Specialty / Gateway',
+        default_base_url: 'https://openrouter.ai/api/v1',
+        default_model: 'hunyuan-mt-7b',
+        type: 'openai_compatible'
+    },
+    'ollama': {
+        id: 'ollama',
+        name: 'Ollama (Local)',
+        default_base_url: 'http://127.0.0.1:11434/v1',
+        default_model: 'llama3.1:8b',
+        type: 'openai_compatible'
+    }
+};
+
+LLMAdapter.MODEL_CATALOG = {
+    // 1. DeepSeek
+    'deepseek-chat': { provider: 'deepseek', name: 'DeepSeek V4.1 Flash', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'deepseek-v4.1-flash': { provider: 'deepseek', name: 'DeepSeek V4.1 Flash', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true, target_id: 'deepseek-chat' },
+    'deepseek-v4-flash': { provider: 'deepseek', name: 'DeepSeek V4 Flash', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true, target_id: 'deepseek-chat' },
+    'deepseek-reasoner': { provider: 'deepseek', name: 'DeepSeek R1 0528', capabilities: ['reasoning', 'code', 'text'], supportsVision: false, supportsReasoning: true, supportsTools: false },
+    'deepseek-r1-0528': { provider: 'deepseek', name: 'DeepSeek R1 0528', capabilities: ['reasoning', 'code', 'text'], supportsVision: false, supportsReasoning: true, supportsTools: false, target_id: 'deepseek-reasoner' },
+    'deepseek-ocr': { provider: 'deepseek', name: 'DeepSeek OCR', capabilities: ['vision', 'ocr', 'text'], supportsVision: true, supportsReasoning: false, supportsTools: false },
+
+    // 2. Z.ai (GLM)
+    'glm-5.3-flash': { provider: 'zai', name: 'GLM 5.3 Flash', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'glm-4.7-flash': { provider: 'zai', name: 'GLM 4.7 Flash', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'glm-4.5-flash': { provider: 'zai', name: 'GLM 4.5 Flash', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'glm-4.1v-thinking-flash': { provider: 'zai', name: 'GLM 4.1V Thinking Flash', capabilities: ['vision', 'reasoning', 'text'], supportsVision: true, supportsReasoning: true, supportsTools: false },
+    'glm-4v-flash': { provider: 'zai', name: 'GLM 4V Flash', capabilities: ['vision', 'text'], supportsVision: true, supportsReasoning: false, supportsTools: false },
+    'glm-4-flash': { provider: 'zai', name: 'GLM 4 Flash', capabilities: ['text', 'code', 'fast', 'tools'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'glm-z1-flash': { provider: 'zai', name: 'GLM Z1 Flash', capabilities: ['reasoning', 'code', 'text'], supportsVision: false, supportsReasoning: true, supportsTools: false },
+    'glm-4-9b': { provider: 'zai', name: 'GLM 4 9B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+    'glm-z1-9b': { provider: 'zai', name: 'GLM Z1 9B', capabilities: ['reasoning', 'text'], supportsVision: false, supportsReasoning: true, supportsTools: false },
+
+    // 3. Qwen
+    'qwen3-235b-instruct': { provider: 'qwen', name: 'Qwen3 235B Instruct', capabilities: ['text', 'code', 'tools', 'reasoning'], supportsVision: false, supportsReasoning: true, supportsTools: true },
+    'qwen3-8b': { provider: 'qwen', name: 'Qwen3 8B', capabilities: ['text', 'code', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+    'qwen3.5-4b': { provider: 'qwen', name: 'Qwen3.5 4B', capabilities: ['text', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+    'qwen2.5-7b-instruct': { provider: 'qwen', name: 'Qwen2.5 7B Instruct', capabilities: ['text', 'code', 'tools'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+
+    // 4. Google
+    'gemini-2.0-flash': { provider: 'google', name: 'Gemini 2.0 Flash', capabilities: ['text', 'code', 'vision', 'tools', 'fast'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+    'gemma-4-26b-a4b': { provider: 'google', name: 'Gemma 4 26B A4B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+    'gemma-4-e4b': { provider: 'google', name: 'Gemma 4 E4B', capabilities: ['text', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+
+    // 5. OpenAI
+    'gpt-oss-120b': { provider: 'openai', name: 'GPT OSS 120B', capabilities: ['text', 'code', 'tools', 'reasoning'], supportsVision: false, supportsReasoning: true, supportsTools: true },
+    'gpt-4o': { provider: 'openai', name: 'GPT-4o', capabilities: ['text', 'code', 'vision', 'tools'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+    'gpt-4o-mini': { provider: 'openai', name: 'GPT-4o Mini', capabilities: ['text', 'code', 'fast', 'tools'], supportsVision: true, supportsReasoning: false, supportsTools: true },
+
+    // 6. Meta
+    'llama-3.1-8b': { provider: 'meta', name: 'Llama 3.1 8B', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'meta-llama/llama-3.1-8b-instruct': { provider: 'meta', name: 'Llama 3.1 8B Instruct', capabilities: ['text', 'code', 'tools', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'meta-llama/llama-3.3-70b-instruct': { provider: 'meta', name: 'Llama 3.3 70B Instruct', capabilities: ['text', 'code', 'tools'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+
+    // 7. Mistral
+    'mistral-small-3.2-24b': { provider: 'mistral', name: 'Mistral Small 3.2 24B', capabilities: ['text', 'code', 'tools'], supportsVision: false, supportsReasoning: false, supportsTools: true },
+    'open-mistral-nemo': { provider: 'mistral', name: 'Mistral Nemo', capabilities: ['text', 'code', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+
+    // 8. NVIDIA
+    'nvidia/nemotron-3-ultra': { provider: 'nvidia', name: 'Nemotron 3 Ultra', capabilities: ['text', 'code', 'reasoning'], supportsVision: false, supportsReasoning: true, supportsTools: false },
+    'nvidia/nemotron-3-nano-omni-30b': { provider: 'nvidia', name: 'Nemotron 3 Nano Omni 30B', capabilities: ['vision', 'text', 'fast'], supportsVision: true, supportsReasoning: false, supportsTools: false },
+
+    // 9. Additional Models
+    'hunyuan-mt-7b': { provider: 'specialty', name: 'Hunyuan MT 7B', capabilities: ['translation', 'text'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+    'liquid/lfm-2.5-2.6b': { provider: 'specialty', name: 'LFM 2.5 2.6B', capabilities: ['text', 'fast'], supportsVision: false, supportsReasoning: false, supportsTools: false },
+    'xing-4.0-29b': { provider: 'specialty', name: 'Xing 4.0 29B', capabilities: ['text', 'code'], supportsVision: false, supportsReasoning: false, supportsTools: false }
+};
+
+LLMAdapter.normalizeProviderId = function(typeOrName) {
+    var s = String(typeOrName || '').toLowerCase().trim();
+    if (s.indexOf('deepseek') >= 0) return 'deepseek';
+    if (s.indexOf('z.ai') >= 0 || s.indexOf('zai') >= 0 || s.indexOf('zhipu') >= 0 || s.indexOf('glm') >= 0) return 'zai';
+    if (s.indexOf('qwen') >= 0 || s.indexOf('dashscope') >= 0 || s.indexOf('alibaba') >= 0) return 'qwen';
+    if (s.indexOf('google') >= 0 || s.indexOf('gemini') >= 0 || s.indexOf('gemma') >= 0) return 'google';
+    if (s.indexOf('meta') >= 0 || s.indexOf('llama') >= 0) return 'meta';
+    if (s.indexOf('mistral') >= 0) return 'mistral';
+    if (s.indexOf('nvidia') >= 0 || s.indexOf('nemotron') >= 0) return 'nvidia';
+    if (s.indexOf('ollama') >= 0) return 'ollama';
+    if (s.indexOf('hunyuan') >= 0 || s.indexOf('liquid') >= 0 || s.indexOf('xing') >= 0) return 'specialty';
+    if (s === 'openai_compatible') return 'openai_compatible';
+    if (s.indexOf('openai') >= 0 || s.indexOf('chatgpt') >= 0 || s.indexOf('gpt') >= 0) return 'openai';
+    if (s.indexOf('specialty') >= 0 || s.indexOf('gateway') >= 0 || s.indexOf('openrouter') >= 0) return 'specialty';
+    return 'openai_compatible';
+};
+
+LLMAdapter.resolveDefaultBaseUrl = function(typeOrName) {
+    var pid = LLMAdapter.normalizeProviderId(typeOrName);
+    var pDef = LLMAdapter.PROVIDERS[pid];
+    return pDef ? pDef.default_base_url : 'https://api.openai.com/v1';
+};
+
+LLMAdapter.getModelInfo = function(modelId) {
+    var m = String(modelId || '').trim();
+    if (!m) return null;
+    if (LLMAdapter.MODEL_CATALOG[m]) return LLMAdapter.MODEL_CATALOG[m];
+    var mLower = m.toLowerCase();
+    for (var k in LLMAdapter.MODEL_CATALOG) {
+        if (k.toLowerCase() === mLower) return LLMAdapter.MODEL_CATALOG[k];
+    }
+    return null;
+};
+
+LLMAdapter.isCatalogModel = function(modelId) {
+    return !!LLMAdapter.getModelInfo(modelId);
+};
+
+LLMAdapter.getModelsForProvider = function(typeOrName, provName) {
+    var pid = 'openai_compatible';
+    if (provName) {
+        var fromName = LLMAdapter.normalizeProviderId(provName);
+        if (fromName !== 'openai_compatible') pid = fromName;
+    }
+    if (pid === 'openai_compatible' && typeOrName) {
+        pid = LLMAdapter.normalizeProviderId(typeOrName);
+    }
+    var out = [];
+    for (var k in LLMAdapter.MODEL_CATALOG) {
+        var entry = LLMAdapter.MODEL_CATALOG[k];
+        if (entry.provider === pid || pid === 'openai_compatible') {
+            out.push({
+                id: k,
+                name: entry.name,
+                capabilities: entry.capabilities.slice(),
+                supportsVision: !!entry.supportsVision,
+                supportsReasoning: !!entry.supportsReasoning,
+                supportsTools: !!entry.supportsTools
+            });
+        }
+    }
+    return out;
+};
+
+LLMAdapter.validateCapability = function(modelId, requiredCap) {
+    if (!requiredCap) return {ok: true};
+    var info = LLMAdapter.getModelInfo(modelId);
+    if (!info) return {ok: true};
+    if (requiredCap === 'vision' && !info.supportsVision) {
+        return {ok: false, error: 'Model "' + modelId + '" does not support vision or OCR input.'};
+    }
+    if (requiredCap === 'ocr' && (!info.supportsVision && info.capabilities.indexOf('ocr') < 0)) {
+        return {ok: false, error: 'Model "' + modelId + '" does not support OCR processing.'};
+    }
+    if (requiredCap === 'reasoning' && !info.supportsReasoning) {
+        return {ok: false, error: 'Model "' + modelId + '" does not support deep reasoning mode.'};
+    }
+    if (requiredCap === 'tools' && !info.supportsTools) {
+        return {ok: false, error: 'Model "' + modelId + '" does not support function/tool calling.'};
+    }
+    return {ok: true};
+};
+
+
 LLMAdapter.modelCaps = function(model) {
     var m = String(model || '').replace(/^\s+|\s+$/g, '').toLowerCase(), best = '';
     for (var k in LLMAdapter.MODEL_CAPS) if ((m == k || m.indexOf(k + '-') == 0) && k.length > best.length) best = k;
@@ -135,8 +348,11 @@ LLMAdapter.classifyError = function(status, bodyText) {
     if (status === 401 || status === 403 || text.indexOf('unauthorized') >= 0 || text.indexOf('invalid api key') >= 0 || text.indexOf('forbidden') >= 0) {
         return {category: 'auth_error', retryable: false, message: 'Authentication failure (HTTP ' + status + '). Check provider API key.'};
     }
-    if (status === 404) {
+    if (status === 404 || text.indexOf('model_not_found') >= 0 || text.indexOf('model not found') >= 0 || text.indexOf('does not exist') >= 0) {
         return {category: 'not_found', retryable: false, message: 'Endpoint or model not found (HTTP 404).'};
+    }
+    if (text.indexOf('insufficient_quota') >= 0 || text.indexOf('quota exceeded') >= 0 || text.indexOf('balance insufficient') >= 0 || text.indexOf('out of credits') >= 0 || text.indexOf('credit balance') >= 0) {
+        return {category: 'quota_exhausted', retryable: false, message: 'Provider quota or credit balance exhausted.'};
     }
     if (status === 400) {
         if (text.indexOf('tool') >= 0 && (text.indexOf('not supported') >= 0 || text.indexOf('unrecognized') >= 0)) {
@@ -188,10 +404,25 @@ LLMAdapter.prototype = {
         var pCopy = {}; for (var k in this.p) pCopy[k] = this.p[k];
         pCopy.model = modelToUse;
 
+        // Capability pre-flight check if requested
+        if (opts.require_capability) {
+            var capCheck = LLMAdapter.validateCapability(modelToUse, opts.require_capability);
+            if (!capCheck.ok) {
+                return {ok: false, error: capCheck.error, category: 'capability_unsupported', retryable: false};
+            }
+        }
+
+        // Canonical model ID alias mapping
+        var mInfo = LLMAdapter.getModelInfo(modelToUse);
+        if (mInfo && mInfo.target_id) {
+            pCopy.model = mInfo.target_id;
+        }
+
         if (this.p.type == 'anthropic') return this._anthropic(system, messages, tools, opts, pCopy);
-        /* gemini: first-class type — defaults to Google OpenAI-compatible endpoint */
-        if (this.p.type == 'gemini' && !pCopy.base_url) {
-            pCopy.base_url = 'https://generativelanguage.googleapis.com/v1beta/openai';
+        
+        // Auto-resolve base_url if empty using provider registry
+        if (!pCopy.base_url) {
+            pCopy.base_url = LLMAdapter.resolveDefaultBaseUrl(pCopy.type || pCopy.name);
         }
         return this._openai(LLMAdapter.systemText(system), messages, tools, opts, pCopy);
     },
@@ -325,8 +556,8 @@ LLMAdapter.prototype = {
         }
 
         var baseUrl = (this.p.base_url || '').replace(/\/+$/, '');
-        if (this.p.type == 'gemini' && !baseUrl) {
-            baseUrl = 'https://generativelanguage.googleapis.com/v1beta/openai';
+        if (!baseUrl) {
+            baseUrl = LLMAdapter.resolveDefaultBaseUrl(this.p.type || this.p.name);
         }
         var modelsUrl = baseUrl + '/models';
         var mRes = this._get(modelsUrl, {'Authorization': 'Bearer ' + this.p.key});
@@ -412,9 +643,11 @@ LLMAdapter.prototype = {
                 cache_write: 0
             };
         }
+        var reasoningText = m.reasoning_content || '';
         return {
             ok: true,
-            text: m.content || '',
+            text: m.content || (reasoningText && !calls.length ? reasoningText : ''),
+            reasoning: reasoningText || null,
             tool_calls: calls,
             usage: usage,
             finish_reason: choice.finish_reason || '',

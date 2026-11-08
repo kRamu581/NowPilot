@@ -8,7 +8,8 @@ const testSuites = [
     { file: 'src/test/test_itsm_intelligence.js', name: 'ITSM Intelligence' },
     { file: 'src/test/test_omniroute.js', name: 'OmniRoute Multi-Model' },
     { file: 'src/test/test_workflow_automation.js', name: 'Workflow Automation' },
-    { file: 'src/test/test_pillar1_backlog_uplift.js', name: 'Pillar 1 Backlog Uplift' }
+    { file: 'src/test/test_pillar1_backlog_uplift.js', name: 'Pillar 1 Backlog Uplift' },
+    { file: 'src/test/test_multi_provider_catalog.js', name: 'Multi-Provider Catalog' }
 ];
 
 console.log('----------------------------------------------------------------------');

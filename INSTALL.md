@@ -182,59 +182,90 @@ The install does **not** ship with any API keys. You must add one provider.
 
 2. Click **New**.
 
-### Step 11. Fill the form (pick one example)
+### Step 11. Fill the form (Multi-Provider Support)
 
-#### Option A — OpenAI / OpenRouter / Grok (OpenAI-compatible)
+NowPilot supports **9 AI providers** out of the box using OpenAI-compatible or native REST endpoints. All API keys are encrypted at rest using ServiceNow's 2-way encryption (`GlideEncrypter`) and are never sent to client browsers.
 
-| Field | Example value |
+#### 1. DeepSeek (Reasoning & Code)
+| Field | Value |
+|---|---|
+| **Name** | `DeepSeek` |
+| **Type** | `openai_compatible` |
+| **Base URL** | `https://api.deepseek.com` |
+| **Model** | `deepseek-chat` (or `deepseek-reasoner` for R1 reasoning, `deepseek-ocr` for vision) |
+| **API Key** | Your DeepSeek API key |
+
+#### 2. Z.ai / Zhipu AI (GLM Series)
+| Field | Value |
+|---|---|
+| **Name** | `Z.ai` (or `GLM`) |
+| **Type** | `openai_compatible` |
+| **Base URL** | `https://open.bigmodel.cn/api/paas/v4` |
+| **Model** | `glm-4-flash` (or `glm-5.3-flash`, `glm-z1-flash`, `glm-4.1v-thinking-flash`) |
+| **API Key** | Your Zhipu BigModel API key |
+
+#### 3. Qwen / Alibaba DashScope
+| Field | Value |
+|---|---|
+| **Name** | `Qwen` |
+| **Type** | `openai_compatible` |
+| **Base URL** | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| **Model** | `qwen2.5-7b-instruct` (or `qwen3-235b-instruct`, `qwen3-8b`, `qwen3.5-4b`) |
+| **API Key** | Your DashScope API key |
+
+#### 4. Google (Gemini & Gemma)
+| Field | Value |
+|---|---|
+| **Name** | `Google` |
+| **Type** | `gemini` or `openai_compatible` |
+| **Base URL** | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| **Model** | `gemini-2.0-flash` (or `gemma-4-26b-a4b`, `gemma-4-e4b`) |
+| **API Key** | Key from [Google AI Studio](https://aistudio.google.com/apikey) |
+
+#### 5. OpenAI
+| Field | Value |
 |---|---|
 | **Name** | `OpenAI` |
 | **Type** | `openai_compatible` |
 | **Base URL** | `https://api.openai.com/v1` |
-| **Model** | `gpt-4o-mini` |
-| **API Key** | your secret key |
-| **Active** | checked |
-| **Is default** | checked |
+| **Model** | `gpt-4o-mini` (or `gpt-4o`, `gpt-oss-120b`) |
+| **API Key** | Your OpenAI API key |
 
-#### Option B — Anthropic Claude
-
-| Field | Example value |
+#### 6. Meta Llama (via Gateway or Groq)
+| Field | Value |
 |---|---|
-| **Name** | `Claude` |
-| **Type** | `anthropic` |
-| **Base URL** | leave blank (uses `https://api.anthropic.com/v1`) |
-| **Model** | `claude-sonnet-4-20250514` (or your model id) |
-| **API Key** | your Anthropic key |
-| **Active** | checked |
-| **Is default** | checked |
+| **Name** | `Meta Llama` |
+| **Type** | `openai_compatible` |
+| **Base URL** | `https://api.groq.com/openai/v1` (or your preferred gateway) |
+| **Model** | `meta-llama/llama-3.1-8b-instruct` (or `meta-llama/llama-3.3-70b-instruct`) |
+| **API Key** | Your gateway API key |
 
-#### Option C — Google Gemini
-
-| Field | Example value |
+#### 7. Mistral AI
+| Field | Value |
 |---|---|
-| **Name** | `Gemini` |
-| **Type** | `gemini` **or** `openai_compatible` |
-| **Base URL** | blank if type=`gemini`, else `https://generativelanguage.googleapis.com/v1beta/openai` |
-| **Model** | `gemini-2.0-flash` |
-| **API Key** | key from [Google AI Studio](https://aistudio.google.com/apikey) |
-| **Active** | checked |
-| **Is default** | checked |
+| **Name** | `Mistral` |
+| **Type** | `openai_compatible` |
+| **Base URL** | `https://api.mistral.ai/v1` |
+| **Model** | `mistral-small-3.2-24b` (or `open-mistral-nemo`) |
+| **API Key** | Your Mistral API key |
 
-#### Option D — OpenRouter (many models)
-
-| Field | Example value |
+#### 8. NVIDIA NIM
+| Field | Value |
 |---|---|
-| **Name** | `OpenRouter` |
-| **Type** | `openai_compatible` or `omniroute` |
-| **Base URL** | `https://openrouter.ai/api/v1` |
-| **Model** | `openai/gpt-4o-mini` |
-| **API Key** | your OpenRouter key |
-| **Active** | checked |
-| **Is default** | checked |
+| **Name** | `NVIDIA NIM` |
+| **Type** | `openai_compatible` |
+| **Base URL** | `https://integrate.api.nvidia.com/v1` |
+| **Model** | `nvidia/nemotron-3-nano-omni-30b` (or `nvidia/nemotron-3-ultra`) |
+| **API Key** | Your NVIDIA NIM API key |
+
+#### 9. Specialty & Local Models
+| Provider | Default Base URL | Example Models |
+|---|---|---|
+| **Local Ollama** | `http://127.0.0.1:11434/v1` *(requires `x_gmg_ai.allow_http_localhost=true`)* | `llama3.1:8b` |
+| **OpenRouter / Antseed** | `https://openrouter.ai/api/v1` | `hunyuan-mt-7b`, `liquid/lfm-2.5-2.6b`, `xing-4.0-29b` |
 
 3. Click **Submit** / **Save**.
-
-Optional: use **Test connection** if your build exposes it on the provider form.
+4. Test connection using the **⚡ Test Connection** button directly in the NowPilot floating panel model menu.
 
 ---
 

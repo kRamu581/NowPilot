@@ -107,15 +107,21 @@ AgentCore.getAllowedModels = function() {
     return prop.split(',').map(function(m) { return m.trim(); }).filter(Boolean);
 };
 
-AgentCore.isModelAllowed = function(modelName, providerDefaultModel) {
+AgentCore.isModelAllowed = function(modelName, providerDefaultModel, providerTypeOrName) {
     modelName = String(modelName || '').trim();
     if (!modelName) return false;
     var allowlist = AgentCore.getAllowedModels();
     if (allowlist && allowlist.length) {
         return allowlist.indexOf(modelName) >= 0;
     }
-    // Fail-closed when no allowlist is configured: only provider's default model is valid
-    return providerDefaultModel ? (modelName === String(providerDefaultModel).trim()) : false;
+    // Provider's configured default model is always valid
+    if (providerDefaultModel && modelName === String(providerDefaultModel).trim()) return true;
+    // Recognized models in the multi-provider catalog
+    if (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.isCatalogModel == 'function') {
+        if (LLMAdapter.isCatalogModel(modelName)) return true;
+    }
+    // Fail-closed when no allowlist is configured and not in catalog
+    return false;
 };
 
 AgentCore.READ_ONLY_LINE = 'Read-only for this user: an admin has turned off record updates for non-admin users. You can read, look up and explain records, but you cannot propose or make any change. If asked to change something, reply exactly: "Updating records is turned off for your role. I can still read and explain this record for you."';
@@ -160,17 +166,48 @@ AgentCore.prototype = {
         while (gr.next()) {
             if (this.canUse(gr)) {
                 var defaultModel = gr.getValue('model') || '';
+                var pType = gr.getValue('type') || 'openai_compatible';
+                var pName = gr.getValue('name') || '';
+                var catalogModels = (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.getModelsForProvider == 'function')
+                    ? LLMAdapter.getModelsForProvider(pType, pName)
+                    : [];
+
                 var models = [defaultModel];
+                var modelDetails = [];
+
                 if (allowlist && allowlist.length) {
                     models = allowlist.slice();
                     if (defaultModel && models.indexOf(defaultModel) < 0) models.unshift(defaultModel);
+                } else if (catalogModels.length) {
+                    catalogModels.forEach(function(cm) {
+                        if (models.indexOf(cm.id) < 0) models.push(cm.id);
+                    });
                 }
+
+                models.forEach(function(mId) {
+                    var info = (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.getModelInfo == 'function') ? LLMAdapter.getModelInfo(mId) : null;
+                    modelDetails.push({
+                        id: mId,
+                        name: (info && info.name) || mId,
+                        capabilities: (info && info.capabilities) || ['text'],
+                        supports_vision: !!(info && info.supportsVision),
+                        supports_reasoning: !!(info && info.supportsReasoning),
+                        supports_tools: !!(info && info.supportsTools)
+                    });
+                });
+
+                var pid = (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.normalizeProviderId == 'function')
+                    ? LLMAdapter.normalizeProviderId(pType === 'openai_compatible' ? pName : pType)
+                    : pType;
+
                 out.push({
                     sys_id: gr.getUniqueValue(),
-                    name: gr.getValue('name'),
-                    type: gr.getValue('type') || 'openai_compatible',
+                    name: pName,
+                    type: pType,
+                    provider_id: pid,
                     model: defaultModel,
                     models: models,
+                    model_details: modelDetails,
                     is_default: gr.getValue('is_default') == '1'
                 });
             }
@@ -358,7 +395,7 @@ AgentCore.prototype = {
         // Fail-closed model validation
         var requestedModel = payload.model ? String(payload.model).trim() : '';
         if (requestedModel) {
-            if (!AgentCore.isModelAllowed(requestedModel, pgr.getValue('model'))) {
+            if (!AgentCore.isModelAllowed(requestedModel, pgr.getValue('model'), pgr.getValue('type') || pgr.getValue('name'))) {
                 out.error = 'Model "' + requestedModel + '" is not authorized. Valid models must be explicitly configured in x_gmg_ai.model_allowlist.';
                 out.error_code = (typeof DiagnosticService != 'undefined') ? DiagnosticService.ERRORS.CONFIG_ERROR : 'CONFIG_ERROR';
                 out.rejected = true;

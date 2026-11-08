@@ -127,11 +127,21 @@ Follow the 11-step walkthrough in **→ [INSTALL.md](INSTALL.md)**:
 4. Add an AI provider in `x_gmg_ai_provider.list` (e.g. Gemini, OpenAI, Claude, or OpenRouter)
 5. Open an Incident form and click the launcher
 
-**Gemini Quick Setup:**
-- Type: `gemini` (or `openai_compatible`)
-- Model: `gemini-2.0-flash`
-- Base URL: `https://generativelanguage.googleapis.com/v1beta/openai`
-- API Key: Key from [Google AI Studio](https://aistudio.google.com/apikey)
+**Supported Multi-Provider Models (v2.0)**
+
+NowPilot features a unified AI provider architecture supporting 9 leading AI providers with capability-aware routing (Reasoning, Vision, Code, Fast):
+
+| Provider | Canonical Base URL | Supported Models | Capabilities |
+|---|---|---|---|
+| **DeepSeek** | `https://api.deepseek.com` | `deepseek-chat` (V4.1/V4 Flash), `deepseek-reasoner` (R1 0528), `deepseek-ocr` | Code, Reasoning, Vision |
+| **Z.ai (GLM)** | `https://open.bigmodel.cn/api/paas/v4` | `glm-5.3-flash`, `glm-4.7-flash`, `glm-4.5-flash`, `glm-4.1v-thinking-flash`, `glm-4v-flash`, `glm-4-flash`, `glm-z1-flash`, `glm-4-9b`, `glm-z1-9b` | Code, Reasoning, Vision, Fast |
+| **Qwen** | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen3-235b-instruct`, `qwen3-8b`, `qwen3.5-4b`, `qwen2.5-7b-instruct` | Reasoning, Code, Fast |
+| **Google** | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.0-flash`, `gemma-4-26b-a4b`, `gemma-4-e4b` | Vision, Code, Fast |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-oss-120b`, `gpt-4o`, `gpt-4o-mini` | Reasoning, Vision, Code |
+| **Meta** | `https://api.groq.com/openai/v1` (or Gateway) | `meta-llama/llama-3.1-8b-instruct`, `meta-llama/llama-3.3-70b-instruct` | Code, Fast |
+| **Mistral** | `https://api.mistral.ai/v1` | `mistral-small-3.2-24b`, `open-mistral-nemo` | Code, Fast |
+| **NVIDIA** | `https://integrate.api.nvidia.com/v1` | `nvidia/nemotron-3-ultra`, `nvidia/nemotron-3-nano-omni-30b` | Reasoning, Vision |
+| **Specialty / Ollama** | Gateway / `http://127.0.0.1:11434/v1` | `hunyuan-mt-7b`, `liquid/lfm-2.5-2.6b`, `xing-4.0-29b`, `llama3.1:8b` | Edge, Translation |
 
 ---
 

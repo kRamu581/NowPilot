@@ -1,8 +1,6 @@
 $files = @(
     'update_sets\now_pilot_global.xml',
-    'update_sets\gmg_ai_agent_global.xml',
-    'update_sets\now_pilot_scoped.xml',
-    'update_sets\gmg_ai_agent_scoped.xml'
+    'update_sets\now_pilot_scoped.xml'
 )
 
 $allPassed = $true

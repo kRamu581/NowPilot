@@ -1461,10 +1461,21 @@ GMGAIApplier.prototype = {
         '.gmgai-model-pill:hover{background:#F1F5F9;border-color:#CBD5E1;color:#0F172A}' +
         '.gmgai-sparkle{color:#3B82F6;font-size:11px}' +
         '.gmgai-chevron{font-size:9px;color:#64748B}' +
-        '.gmgai-model-menu{position:absolute;bottom:calc(100% + 6px);left:0;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.04);min-width:200px;max-height:200px;overflow-y:auto;padding:4px;z-index:2147483015;display:flex;flex-direction:column;gap:2px}' +
-        '.gmgai-model-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;font-size:12px;font-weight:500;color:#334155;background:transparent;border:0;width:100%;text-align:left;cursor:pointer;transition:all .15s ease;font-family:inherit;user-select:none;-webkit-user-select:none}' +
+        '.gmgai-model-menu{position:absolute;bottom:calc(100% + 6px);left:0;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,0.14),0 2px 8px rgba(0,0,0,0.06);min-width:260px;max-width:320px;max-height:280px;overflow-y:auto;padding:6px;z-index:2147483015;display:flex;flex-direction:column;gap:3px}' +
+        '.gmgai-model-group-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748B;padding:6px 8px 3px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F1F5F9;margin-top:2px}' +
+        '.gmgai-model-group-head:first-child{border-top:0;margin-top:0}' +
+        '.gmgai-model-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;border-radius:6px;font-size:12px;font-weight:500;color:#334155;background:transparent;border:0;width:100%;text-align:left;cursor:pointer;transition:all .15s ease;font-family:inherit;user-select:none;-webkit-user-select:none}' +
         '.gmgai-model-item:hover{background:#F8FAFC;color:#0F172A}' +
         '.gmgai-model-item.gmgai-active{font-weight:600;color:#2563EB;background:#EFF6FF}' +
+        '.gmgai-model-badges{display:inline-flex;align-items:center;gap:3px;margin-left:auto;margin-right:4px}' +
+        '.gmgai-model-badge{font-size:9px;line-height:1;padding:2px 4px;border-radius:4px;background:#F1F5F9;color:#475569;font-weight:600;border:1px solid #E2E8F0}' +
+        '.gmgai-badge-reasoning{background:#FAF5FF;color:#7E22CE;border-color:#F3E8FF}' +
+        '.gmgai-badge-vision{background:#EFF6FF;color:#1D4ED8;border-color:#DBEAFE}' +
+        '.gmgai-badge-fast{background:#ECFDF5;color:#047857;border-color:#D1FAE5}' +
+        '.gmgai-badge-code{background:#FFF7ED;color:#C2410C;border-color:#FFEDD5}' +
+        '.gmgai-model-menu-foot{border-top:1px solid #E2E8F0;padding-top:4px;margin-top:4px;display:flex;align-items:center;justify-content:space-between}' +
+        '.gmgai-model-test-btn{width:100%;font-size:11px;font-weight:600;color:#2563EB;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:5px 8px;cursor:pointer;text-align:center;transition:all .15s ease}' +
+        '.gmgai-model-test-btn:hover{background:#EFF6FF;border-color:#BFDBFE}' +
         '.gmgai-composer-actions{display:flex;align-items:center;gap:6px;user-select:none;-webkit-user-select:none}' +
         '#gmgai-clip{flex:0 0 36px;width:30px;height:30px;border-radius:50%;background:transparent;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;transition:all .15s ease;padding:0;box-sizing:border-box}' +
         '#gmgai-clip:hover{background:#F1F5F9;color:#0F172A}' +
@@ -1596,7 +1607,12 @@ GMGAIApplier.prototype = {
             var p = providers[i];
             if (p.sys_id === cur) return p.model || p.name || 'Default Model';
             if (cur &amp;amp;&amp;amp; cur.indexOf(p.sys_id + ':') === 0) {
-                return cur.substring(p.sys_id.length + 1);
+                var modelId = cur.substring(p.sys_id.length + 1);
+                var details = p.model_details || [];
+                for (var k = 0; k &amp;lt; details.length; k++) {
+                    if (details[k].id === modelId) return details[k].name || modelId;
+                }
+                return modelId;
             }
         }
         if (providers.length &amp;amp;&amp;amp; (cur === 'default' || !cur)) {
@@ -1631,20 +1647,42 @@ GMGAIApplier.prototype = {
         var cur = s.provider || 'default';
         var out = '&amp;lt;div id=&amp;quot;gmgai-model-menu&amp;quot; class=&amp;quot;gmgai-model-menu&amp;quot; style=&amp;quot;display:none&amp;quot;&amp;gt;';
         out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (cur === 'default' || !cur ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;default&amp;quot;&amp;gt;&amp;lt;span&amp;gt;Default Model&amp;lt;/span&amp;gt;' + (cur === 'default' || !cur ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
+        
         (top.__gmgaiProviders || []).forEach(function(p) {
-            var pModels = (p.models &amp;amp;&amp;amp; p.models.length) ? p.models : [p.model];
-            if (pModels.length &amp;lt;= 1) {
-                var val = p.sys_id;
-                var isSel = (cur === val);
-                out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name + ' (' + p.model + ')') + '&amp;lt;/span&amp;gt;' + (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
+            out += '&amp;lt;div class=&amp;quot;gmgai-model-group-head&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name || 'Provider') + '&amp;lt;/span&amp;gt;&amp;lt;span style=&amp;quot;font-size:9px;color:#94A3B8&amp;quot;&amp;gt;' + esc(p.type || '') + '&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;';
+            var details = (p.model_details &amp;amp;&amp;amp; p.model_details.length) ? p.model_details : null;
+            if (details) {
+                details.forEach(function(md) {
+                    var val = p.sys_id + ':' + md.id;
+                    var isSel = (cur === val || (cur === p.sys_id &amp;amp;&amp;amp; md.id === p.model));
+                    var badges = '';
+                    if (md.supports_reasoning) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-reasoning&amp;quot; title=&amp;quot;Reasoning&amp;quot;&amp;gt;Reasoning&amp;lt;/span&amp;gt;';
+                    if (md.supports_vision) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-vision&amp;quot; title=&amp;quot;Vision&amp;quot;&amp;gt;Vision&amp;lt;/span&amp;gt;';
+                    if (md.capabilities &amp;amp;&amp;amp; md.capabilities.indexOf('code') &amp;gt;= 0 &amp;amp;&amp;amp; !md.supports_reasoning) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-code&amp;quot; title=&amp;quot;Code&amp;quot;&amp;gt;Code&amp;lt;/span&amp;gt;';
+                    if (md.capabilities &amp;amp;&amp;amp; md.capabilities.indexOf('fast') &amp;gt;= 0) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-fast&amp;quot; title=&amp;quot;Fast&amp;quot;&amp;gt;Fast&amp;lt;/span&amp;gt;';
+
+                    out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;' +
+                           '&amp;lt;span style=&amp;quot;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px&amp;quot;&amp;gt;' + esc(md.name || md.id) + '&amp;lt;/span&amp;gt;' +
+                           '&amp;lt;div class=&amp;quot;gmgai-model-badges&amp;quot;&amp;gt;' + badges + '&amp;lt;/div&amp;gt;' +
+                           (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') +
+                           '&amp;lt;/button&amp;gt;';
+                });
             } else {
+                var pModels = (p.models &amp;amp;&amp;amp; p.models.length) ? p.models : [p.model];
                 pModels.forEach(function(m) {
-                    var val = p.sys_id + ':' + m;
+                    var val = (pModels.length &amp;lt;= 1) ? p.sys_id : (p.sys_id + ':' + m);
                     var isSel = (cur === val);
-                    out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name + ': ' + m) + '&amp;lt;/span&amp;gt;' + (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
+                    out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;' +
+                           '&amp;lt;span&amp;gt;' + esc(m) + '&amp;lt;/span&amp;gt;' +
+                           (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') +
+                           '&amp;lt;/button&amp;gt;';
                 });
             }
         });
+
+        out += '&amp;lt;div class=&amp;quot;gmgai-model-menu-foot&amp;quot;&amp;gt;' +
+               '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-test-btn&amp;quot; id=&amp;quot;gmgai-quick-test-btn&amp;quot; title=&amp;quot;Test Connection to active provider&amp;quot;&amp;gt;⚡ Test Connection&amp;lt;/button&amp;gt;' +
+               '&amp;lt;/div&amp;gt;';
         out += '&amp;lt;/div&amp;gt;';
         return out;
     }
@@ -2076,6 +2114,51 @@ GMGAIApplier.prototype = {
                 render();
             };
         });
+
+        var quickTestBtn = root.querySelector('#gmgai-quick-test-btn');
+        if (quickTestBtn) {
+            quickTestBtn.onclick = function(e) {
+                e.stopPropagation();
+                var st = load();
+                var provId = '';
+                if (st.provider &amp;amp;&amp;amp; st.provider !== 'default') {
+                    provId = st.provider.split(':')[0];
+                }
+                quickTestBtn.disabled = true;
+                quickTestBtn.textContent = 'Testing connection...';
+                var url = HAPI + '?diagnostics=1' + (provId ? '&amp;amp;test_provider=' + encodeURIComponent(provId) : '&amp;amp;test=1');
+                w.fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-UserToken': top.__gmgaiToken || w.g_ck || ''}})
+                    .then(function(r) { return r.json(); })
+                    .then(function(j) {
+                        var res = (j &amp;amp;&amp;amp; j.result) || j || {};
+                        quickTestBtn.disabled = false;
+                        if (res.connection_ok) {
+                            quickTestBtn.textContent = '✓ Connected (' + (res.latency_ms || 0) + 'ms)';
+                            quickTestBtn.style.color = '#15803D';
+                        } else {
+                            var err = res.error || (res.status ? 'HTTP ' + res.status : 'Failed');
+                            quickTestBtn.textContent = '✗ ' + String(err).substring(0, 24);
+                            quickTestBtn.style.color = '#B91C1C';
+                        }
+                        setTimeout(function() {
+                            if (quickTestBtn) {
+                                quickTestBtn.textContent = '⚡ Test Connection';
+                                quickTestBtn.style.color = '';
+                            }
+                        }, 3500);
+                    })['catch'](function() {
+                        quickTestBtn.disabled = false;
+                        quickTestBtn.textContent = '✗ Network error';
+                        quickTestBtn.style.color = '#B91C1C';
+                        setTimeout(function() {
+                            if (quickTestBtn) {
+                                quickTestBtn.textContent = '⚡ Test Connection';
+                                quickTestBtn.style.color = '';
+                            }
+                        }, 3500);
+                    });
+            };
+        }
 
         // Global click-outside &amp;amp; Escape handlers
         if (top.__gmgaiDocClick) {
