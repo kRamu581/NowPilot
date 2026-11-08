@@ -13,7 +13,7 @@ Open source · Multi-model · Human in the loop
 [![Tests](https://img.shields.io/badge/tests-224%2F224-168B50?style=flat-square)](src/test)
 [![Stars](https://img.shields.io/github/stars/kRamu581/NowPilot?style=flat-square)](https://github.com/kRamu581/NowPilot/stargazers)
 
-**[Install](INSTALL.md)** · **[Features](FEATURES.md)** · **[Security](SECURITY.md)** · **[Contribute](CONTRIBUTING.md)**
+**[Install](INSTALL.md)** · **[Features](FEATURES.md)** · **[Architecture](#architecture)** · **[Security](SECURITY.md)** · **[Contribute](CONTRIBUTING.md)**
 
 ⭐ **Star the repo** if you want a ServiceNow AI agent you can trust.
 
@@ -42,6 +42,18 @@ It helps with incidents, knowledge, and code — but it **does not write to the 
 3. **Any model** — Gemini, Claude, OpenAI, OpenRouter, local  
 4. **Real platform help** — summarize tickets, draft code, plan work  
 5. **Tested** — **224/224** offline tests
+
+---
+
+## What's new in v2.0
+
+- **Story decomposer** — backlog / story → OOTB-first build plan  
+- **ATF helper** — form steps + Jasmine-style server test ideas  
+- **Architect refactorer** — safer patterns (no `current.update()` in before rules, async client patterns)  
+- **Otto UI** — cleaner panel, proposal cards, Accept / Reject  
+- **Gemini 2.0 Flash** — first-class provider support  
+
+Full list: **[FEATURES.md](FEATURES.md)**
 
 ---
 
@@ -108,6 +120,51 @@ More: **[SECURITY.md](SECURITY.md)**
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph Browser ["1. Browser / ServiceNow UI"]
+        UI["NowPilot Floating Widget<br/>(gmg_ai_agent_panel.js)"]
+        User(["Developer / ITIL Agent"])
+        User <-->|Prompt / Accept Proposal| UI
+    end
+
+    subgraph Scoped ["2. ServiceNow Scoped Backend (x_gmg_ai)"]
+        REST["Scripted REST API (/api/x_gmg_ai/agent/chat)"]
+        Core["AgentCore Orchestrator"]
+        DevAsst["DevAssistant (Pillar 1 Engines)"]
+        ITSM["ITSMAssistant (RAG & Knowledge)"]
+        WF["WorkflowEngine (Autonomous Tasks)"]
+        Tools["AgentTools (GlideRecordSecure)"]
+        Validator["DevValidator (Static Code Analysis)"]
+        Seal["GMGSeal (Cryptographic Action Guard)"]
+    end
+
+    subgraph LLM ["3. Model Layer"]
+        Adapter["LLMAdapter"]
+        Gemini["Google Gemini 2.0 Flash"]
+        Claude["Anthropic Claude 3.5"]
+        GPT["OpenAI GPT-4o"]
+        Local["Local Ollama / vLLM"]
+    end
+
+    UI --> REST --> Core
+    Core --> DevAsst
+    Core --> ITSM
+    Core --> WF
+    DevAsst & ITSM & WF --> Tools
+    DevAsst --> Validator
+    Core --> Adapter
+    Adapter --> Gemini & Claude & GPT & Local
+    Core --> Seal
+    Seal -->|Sealed Action Card| UI
+```
+
+**In one line:** UI panel → REST API → AgentCore → tools / validators → LLM → sealed proposal back to you.
+
+---
+
 ## Tests
 
 ```bash
@@ -116,12 +173,26 @@ node src/test/run_all_tests.js
 
 **224 tests · 8 suites · offline · 0 network required**
 
+| Suite | File | Tests |
+|---|---|---:|
+| Responsive layout | `test_responsive_layout.js` | 7 |
+| Otto UI | `test_otto_ui.js` | 7 |
+| Production readiness | `test_production_readiness.js` | 107 |
+| Dev Assistant | `test_dev_assistant.js` | 20 |
+| ITSM intelligence | `test_itsm_intelligence.js` | 22 |
+| OmniRoute | `test_omniroute.js` | 13 |
+| Workflow automation | `test_workflow_automation.js` | 22 |
+| Pillar 1 backlog | `test_pillar1_backlog_uplift.js` | 26 |
+| **Total** | | **224** |
+
 ---
 
 ## Repo map
 
 ```
 update_sets/     ← install these two XMLs on ServiceNow
+  now_pilot_global.xml
+  now_pilot_scoped.xml
 src/global/      ← floating panel UI
 src/scoped/      ← agent backend (x_gmg_ai)
 src/test/        ← 224 tests
