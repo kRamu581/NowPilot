@@ -1443,7 +1443,14 @@ AgentTools.prototype = {
              parameters: {type: 'object', properties: {
                  code: {type: 'string', description: 'JavaScript code to refactor'},
                  artifact_type: {type: 'string', description: 'Artifact type, e.g. business_rule, client_script'}
-             }, required: ['code']}}
+             }, required: ['code']}},
+            {name: 'draft_laptop_catalog_build',
+             description: 'Create a design-only blueprint for a laptop Service Catalog item with manager approval, conditional IT Finance CAB approval, and Hardware task fulfillment. Does not create or update ServiceNow records, write flows, or publish anything.',
+             parameters: {type: 'object', properties: {
+                 catalog_item_name: {type: 'string', description: 'Optional catalog item name; defaults to Laptop Request.'},
+                 finance_condition: {type: 'string', description: 'Optional approved condition for when IT Finance CAB approval is required. If omitted, the condition remains unresolved.'},
+                 hardware_assignment_group: {type: 'string', description: 'Optional assignment group display name; defaults to Hardware and is not verified against the instance.'}
+             }}}
         ];
     },
 
@@ -1458,6 +1465,7 @@ AgentTools.prototype = {
             if (name == 'recommend_resolution') return this.recommendResolution(args);
             if (name == 'summarize_incident') return this.summarizeIncident(args);
             if (name == 'prepare_knowledge_draft') return this.prepareKnowledgeDraft(args);
+            if (name == 'draft_laptop_catalog_build') return this.draftLaptopCatalogBuild(args);
             if (name == 'validate_dev_code') {
                 if (typeof DevValidator == 'undefined') return {error: 'DevValidator not installed.'};
                 return new DevValidator().validate(args.code || '', args.artifact_type || 'business_rule');
@@ -1488,6 +1496,59 @@ AgentTools.prototype = {
         } catch (e) {
             return AgentTools.toolError(name, e);
         }
+    },
+
+    draftLaptopCatalogBuild: function(a) {
+        a = a || {};
+        function text(value, fallback, max, label) {
+            if (value != null &amp;amp;&amp;amp; typeof value != 'string') throw label + ' must be text.';
+            var result = value == null || String(value).trim() === '' ? fallback : String(value).trim();
+            if (result.length &amp;gt; max) throw label + ' must be ' + max + ' characters or fewer.';
+            if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(result)) throw label + ' contains unsupported control characters.';
+            return result;
+        }
+
+        var itemName = text(a.catalog_item_name, 'Laptop Request', 100, 'Catalog item name');
+        var financeCondition = text(a.finance_condition, '', 500, 'Finance condition');
+        var assignmentGroup = text(a.hardware_assignment_group, 'Hardware', 120, 'Hardware assignment group');
+        var configuredFinanceRule = financeCondition !== '';
+
+        return {
+            type: 'laptop_catalog_flow_blueprint',
+            status: 'design_only',
+            apply_supported: false,
+            persisted: false,
+            instance_writes: false,
+            execution_ready: false,
+            catalog_item: {
+                name: itemName,
+                table: 'sc_cat_item',
+                active: false,
+                variables: [
+                    {name: 'requested_for', type: 'reference', reference: 'sys_user', mandatory: true},
+                    {name: 'laptop_model', type: 'choice', mandatory: true, options_source: 'Approved laptop inventory; configure for the target instance.'},
+                    {name: 'business_justification', type: 'multi_line_text', mandatory: true},
+                    {name: 'needed_by', type: 'date', mandatory: false}
+                ]
+            },
+            flow: {
+                name: itemName + ' approvals and hardware fulfillment',
+                trigger: {type: 'Service Catalog', item: itemName},
+                steps: [
+                    {type: 'Get Catalog Variables', variables: ['requested_for', 'laptop_model', 'business_justification', 'needed_by']},
+                    {type: 'Manager Approval', approver: 'Manager of requested_for', required: true, on_rejection: 'Stop fulfillment and mark the request rejected.'},
+                    {type: 'Conditional IT Finance CAB Approval', required_when: configuredFinanceRule ? financeCondition : null, configuration_required: !configuredFinanceRule, approver_group: 'IT Finance CAB', on_rejection: 'Stop fulfillment and mark the request rejected.'},
+                    {type: 'Create Catalog Task', assignment_group: assignmentGroup, task: 'Review and fulfill the laptop request.', after_approvals: true},
+                    {type: 'Wait for Catalog Task', completion: 'Complete the request after the Hardware task is closed.'}
+                ]
+            },
+            decision_points: [
+                configuredFinanceRule ? null : 'Define the approved condition or spend threshold that triggers IT Finance CAB approval.',
+                'Confirm the target instance has an active Hardware assignment group and an IT Finance CAB approver group.',
+                'Populate laptop_model choices from the approved device inventory.'
+            ].filter(function(item) { return item !== null; }),
+            implementation_notice: 'This is a local design proposal only. No ServiceNow records or Flow Designer artifacts were created, saved, or activated. Flow Designer serialization, instance references, ACLs, and runtime behavior require validation in a ServiceNow development instance.'
+        };
     },
 
     _checkTable: function(t) {
@@ -2888,7 +2949,7 @@ AgentCore.settings = function(getProp) {
 AgentCore.DATA_TOOLS = [
     'query_records', 'get_record', 'find_similar_incidents', 'get_journal', 'list_fields', 'get_catalog_item',
     'search_similar_incidents', 'search_knowledge_articles', 'recommend_resolution', 'summarize_incident', 'prepare_knowledge_draft',
-    'validate_dev_code', 'review_dev_artifact'
+    'validate_dev_code', 'review_dev_artifact', 'draft_laptop_catalog_build'
 ];
 AgentCore.extCall = function(hook, args) { return typeof GMGExtensions == 'undefined' ? [] : GMGExtensions.call(hook, args); };
 AgentCore.selectToolSet = function(message, page, prevSet, enabled) {
@@ -3168,7 +3229,8 @@ AgentCore.prototype = {
             'Data tools (query_records, get_record, find_similar_incidents) are READ-ONLY and run with the user\'s own permissions. You cannot change incidents, problems, changes, CIs or other data.'
         ].concat(F.after_data, [
             'Record tools: get_journal (READ-ONLY) reads a task record and its work notes / comments; use it to summarize and never write when the user only asks for a summary.',
-            'Metadata tools: list_fields and get_catalog_item are READ-ONLY.'
+            'Metadata tools: list_fields and get_catalog_item are READ-ONLY.',
+            'The draft_laptop_catalog_build tool is a design-only laptop catalog/approval/fulfillment blueprint. It never writes records or creates or activates a flow.'
         ], F.before_prefer, [
             'Prefer calling a tool over guessing. Never invent record numbers, sys_ids, or field values. Be concise; use short lists or tables.'
         ], F.end);
@@ -3901,7 +3963,8 @@ AgentCore.emptyFallback = function(round, lastTool) {
 AgentCore.STEER_CREATE = 'Plan &amp;amp; Create isn\'t enabled here, but if you create the &amp;lt;thing&amp;gt; yourself or open an existing one, I can help you work on it there.';
 AgentCore.STEER_DELETE = 'Deleting records isn\'t available here. If you open the record, I can help you change it, for example by setting its state or adding a work note.';
 AgentCore.CORE_LIMITS = 'Edition: Now Pilot (open source, based on GMG AI Agent). Creating new records, deleting records, and changing any record other than the open one are not available here (GMG Plan &amp;amp; Create is not enabled). ' +
-    'Make no card for any of those. Use this steer for ANYTHING GMG Plan &amp;amp; Create would do: any request to create or build something new, of any record type or artifact. ' +
+    'The only build-planning exception is draft_laptop_catalog_build, which returns a non-applying design blueprint and never creates a card or writes or publishes any artifact. ' +
+    'Make no change card for any request to create or build something new. Use this steer for all unsupported build requests: ' +
     'Answer a delete request with: &amp;quot;' + AgentCore.STEER_DELETE + '&amp;quot; For a change to another record, ask them to open that record.';
 &lt;/script&gt;&lt;sys_class_name&gt;sys_script_include&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-10-19 01:19:25&lt;/sys_created_on&gt;&lt;sys_id&gt;bc9772452f8c1710fe5019aa6fa4e322&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_name&gt;AgentCore&lt;/sys_name&gt;&lt;sys_package display_value="Now Pilot" source="x_gmg_ai"&gt;1ca6f2812f8c1710fe5019aa6fa4e3a5&lt;/sys_package&gt;&lt;sys_policy /&gt;&lt;sys_scope display_value="Now Pilot"&gt;1ca6f2812f8c1710fe5019aa6fa4e3a5&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_script_include_bc9772452f8c1710fe5019aa6fa4e322&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-10-19 01:19:25&lt;/sys_updated_on&gt;&lt;/sys_script_include&gt;&lt;/record_update&gt;</payload><sys_created_on>2026-10-19 01:19:25</sys_created_on><action>INSERT_OR_UPDATE</action><sys_created_by>admin</sys_created_by><table /><comments /><sys_mod_count>0</sys_mod_count><replace_on_upgrade>false</replace_on_upgrade><sys_tags /><sys_recorded_at>1a151bdf4c40000001</sys_recorded_at><update_guid>38977245298c17104aa40704e0916325</update_guid><application>1ca6f2812f8c1710fe5019aa6fa4e3a5</application><name>sys_script_include_bc9772452f8c1710fe5019aa6fa4e322</name><remote_update_set>30a6f2812f8c1710fe5019aa6fa4e3c7</remote_update_set><update_domain>global</update_domain><payload_hash>1b8aa4d83a84e71dda58b58a7e98f230</payload_hash><category>customer</category></sys_update_xml><sys_update_xml action="INSERT_OR_UPDATE"><target_name>GMGExtension</target_name><sys_updated_on>2026-10-19 01:19:28</sys_updated_on><type>Extension Point</type><update_set /><sys_id>6597b2452f8c1710fe5019aa6fa4e352</sys_id><view /><sys_updated_by>admin</sys_updated_by><update_guid_history>6d97b245bf8c1710b4ed2acb50f29051:79478352,6d97b245bf8c1710b4ed2acb50f29051:-205456381</update_guid_history><payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_extension_point"&gt;&lt;sys_extension_point action="INSERT_OR_UPDATE"&gt;&lt;api_name&gt;x_gmg_ai.GMGExtension&lt;/api_name&gt;&lt;description&gt;GMG AI open source core: hooks for GMG Plan &amp;amp; Create (apiVersion 1; see docs/open-core-split-spec.md 2.2)&lt;/description&gt;&lt;example/&gt;&lt;name&gt;GMGExtension&lt;/name&gt;&lt;restrict_scope&gt;false&lt;/restrict_scope&gt;&lt;sys_class_name&gt;sys_extension_point&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-10-19 01:19:28&lt;/sys_created_on&gt;&lt;sys_id&gt;599772452f8c1710fe5019aa6fa4e3f6&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_name&gt;GMGExtension&lt;/sys_name&gt;&lt;sys_package display_value="Now Pilot" source="x_gmg_ai"&gt;1ca6f2812f8c1710fe5019aa6fa4e3a5&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="Now Pilot"&gt;1ca6f2812f8c1710fe5019aa6fa4e3a5&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_extension_point_599772452f8c1710fe5019aa6fa4e3f6&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-10-19 01:19:28&lt;/sys_updated_on&gt;&lt;/sys_extension_point&gt;&lt;/record_update&gt;</payload><sys_created_on>2026-10-19 01:19:28</sys_created_on><action>INSERT_OR_UPDATE</action><sys_created_by>admin</sys_created_by><table /><comments /><sys_mod_count>0</sys_mod_count><replace_on_upgrade>false</replace_on_upgrade><sys_tags /><sys_recorded_at>1a151bdff850000001</sys_recorded_at><update_guid>6d97b245bf8c1710b4ed2acb50f29051</update_guid><application>1ca6f2812f8c1710fe5019aa6fa4e3a5</application><name>sys_extension_point_599772452f8c1710fe5019aa6fa4e3f6</name><remote_update_set>30a6f2812f8c1710fe5019aa6fa4e3c7</remote_update_set><update_domain>global</update_domain><payload_hash>79478352</payload_hash><category>customer</category></sys_update_xml><sys_update_xml action="INSERT_OR_UPDATE"><target_name>Now Pilot</target_name><sys_updated_on>2026-10-19 01:19:39</sys_updated_on><type>Scripted REST API</type><update_set /><sys_id>1ca776452f8c1710fe5019aa6fa4e322</sys_id><view /><sys_updated_by>admin</sys_updated_by><update_guid_history>14a776459a8c171063f8721a0e3be222:1191100687</update_guid_history><payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_ws_definition"&gt;&lt;sys_ws_definition action="INSERT_OR_UPDATE"&gt;&lt;active&gt;true&lt;/active&gt;&lt;base_uri&gt;/api/x_gmg_ai/agent&lt;/base_uri&gt;&lt;consumes&gt;application/json,application/xml,text/xml&lt;/consumes&gt;&lt;consumes_customized&gt;false&lt;/consumes_customized&gt;&lt;default_version&gt;No active default version&lt;/default_version&gt;&lt;doc_link/&gt;&lt;enforce_acl/&gt;&lt;is_versioned&gt;false&lt;/is_versioned&gt;&lt;name&gt;Now Pilot&lt;/name&gt;&lt;namespace&gt;x_gmg_ai&lt;/namespace&gt;&lt;produces&gt;application/json,application/xml,text/xml&lt;/produces&gt;&lt;produces_customized&gt;false&lt;/produces_customized&gt;&lt;service_id&gt;agent&lt;/service_id&gt;&lt;short_description&gt;Chat endpoint for Now Pilot&lt;/short_description&gt;&lt;sys_class_name&gt;sys_ws_definition&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-10-19 01:19:39&lt;/sys_created_on&gt;&lt;sys_id&gt;90a736452f8c1710fe5019aa6fa4e38d&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_name&gt;Now Pilot&lt;/sys_name&gt;&lt;sys_package display_value="Now Pilot" source="x_gmg_ai"&gt;1ca6f2812f8c1710fe5019aa6fa4e3a5&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="Now Pilot"&gt;1ca6f2812f8c1710fe5019aa6fa4e3a5&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_ws_definition_90a736452f8c1710fe5019aa6fa4e38d&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-10-19 01:19:39&lt;/sys_updated_on&gt;&lt;/sys_ws_definition&gt;&lt;/record_update&gt;</payload><sys_created_on>2026-10-19 01:19:39</sys_created_on><action>INSERT_OR_UPDATE</action><sys_created_by>admin</sys_created_by><table /><comments /><sys_mod_count>0</sys_mod_count><replace_on_upgrade>false</replace_on_upgrade><sys_tags /><sys_recorded_at>1a151be2bc80000001</sys_recorded_at><update_guid>14a776459a8c171063f8721a0e3be222</update_guid><application>1ca6f2812f8c1710fe5019aa6fa4e3a5</application><name>sys_ws_definition_90a736452f8c1710fe5019aa6fa4e38d</name><remote_update_set>30a6f2812f8c1710fe5019aa6fa4e3c7</remote_update_set><update_domain>global</update_domain><payload_hash>1191100687</payload_hash><category>customer</category></sys_update_xml><sys_update_xml action="INSERT_OR_UPDATE"><target_name>chat</target_name><sys_updated_on>2026-10-19 01:19:45</sys_updated_on><type>Scripted REST Resource</type><update_set /><sys_id>61a73a452f8c1710fe5019aa6fa4e36b</sys_id><view /><sys_updated_by>admin</sys_updated_by><update_guid_history>69a73a45408c1710f03566c6c04e366a:-1767649298,69a73a45408c1710f03566c6c04e366a:-1773890525,69a73a45408c1710f03566c6c04e366a:-1383532893,69a73a45408c1710f03566c6c04e366a:1413195557</update_guid_history><payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_ws_operation"&gt;&lt;sys_ws_operation action="INSERT_OR_UPDATE"&gt;&lt;active&gt;true&lt;/active&gt;&lt;consumes&gt;application/json,application/xml,text/xml&lt;/consumes&gt;&lt;consumes_customized&gt;false&lt;/consumes_customized&gt;&lt;default_operation_uri/&gt;&lt;enforce_acl/&gt;&lt;http_method&gt;POST&lt;/http_method&gt;&lt;name&gt;chat&lt;/name&gt;&lt;operation_script&gt;&lt;![CDATA[/* Copyright 2026 GMG Technology LLC */ /* SPDX-License-Identifier: Apache-2.0 */ (function process(/*RESTAPIRequest*/ request, /*RESTAPIResponse*/ response) {
     if (!gs.hasRole('x_gmg_ai.user')) { response.setStatus(403); return {error: 'x_gmg_ai.user role required'}; }

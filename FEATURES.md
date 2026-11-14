@@ -4,6 +4,12 @@
 
 Describes the update sets built for v2.0.0 (with Multi-Provider Cloud Architecture, Production Readiness, Observability & End-to-End Validation, Agentic Workflow Automation, ITSM Intelligence & RAG, Advanced ServiceNow Development Assistant, and Gateway upgrades).
 
+## Laptop catalog design prototype
+- `draft_laptop_catalog_build` produces a read-only blueprint for a laptop catalog item, manager approval, conditional IT Finance CAB approval, and Hardware task fulfillment.
+- The tool is available in chat and does not change the panel layout.
+- This is a local design prototype only: it does not create catalog records, variables, Flow Designer artifacts, pending-action cards, or update-set entries. It cannot be accepted or deployed.
+- The finance condition, laptop choices, and assignment-group references must be confirmed for the target instance. A real, deployable flow requires a known-good Flow Designer definition and ServiceNow instance validation.
+
 ## Production Readiness, Observability & End-to-End Validation (v1.5.0)
 - **Centralized Diagnostics & Safe Error Classification (`DiagnosticService`)**:
   - Consistent taxonomy of 12 internal error codes:

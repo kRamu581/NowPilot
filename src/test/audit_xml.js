@@ -102,8 +102,10 @@ const uiChecks = [
         fn: s => s.includes('--np-background:#EEECE8') && s.includes('--np-surface:#FFFFFF') && s.includes('--np-green:#63E052') && s.includes('--np-navy:#002B3B')
     },
     {
-        name: '2. Correct Now Pilot vector logo and fallback badge',
-        fn: s => s.includes('LOGO_SVG') && s.includes('fill="#46CC58"') && s.includes('BTN_LOGO_SVG')
+        name: '2. Bundled replacement logo for the panel and launcher',
+        fn: s => s.includes('data:image/png;base64,') &&
+                 s.includes('var LOGO_SVG = \'<img src="\' + LOGO_IMG_URI') &&
+                 s.includes('var BTN_LOGO_SVG = \'<img src="\' + LOGO_IMG_URI')
     },
     {
         name: '3. Correctly referenced favicon and accessible trigger icon',
@@ -114,7 +116,14 @@ const uiChecks = [
         fn: s => s.includes('Now Pilot') && s.includes('AI-powered ServiceNow assistant') && s.includes('gmgai-prov-select') && s.includes('gmgai-clear') && s.includes('gmgai-close')
     },
     {
-        name: '5. Four navigation tabs with green active indicator',
+        name: '5. Provider and model are displayed on one line in the model picker',
+        fn: s => s.includes('function modelLabel(model)') &&
+                 s.includes('modelLabel(md.id || md.name)') &&
+                 s.includes('modelLabel(m)') &&
+                 !s.includes("out += '<div class=\"gmgai-model-group-head\"><span>'")
+    },
+    {
+        name: '6. Four navigation tabs with green active indicator',
         fn: s => s.includes('id="gmgai-tab-chat"') && s.includes('id="gmgai-tab-itsm"') && s.includes('id="gmgai-tab-dev"') && s.includes('id="gmgai-tab-workflow"') && s.includes('border-bottom-color:var(--np-green)')
     },
     {
@@ -135,7 +144,10 @@ const uiChecks = [
     },
     {
         name: '9. Explicit X close button in top-right header',
-        fn: s => s.includes('id="gmgai-close"') && s.includes('aria-label="Close Now Pilot"')
+        fn: s => s.includes('id="gmgai-close"') && s.includes('aria-label="Close Now Pilot"') &&
+                 s.includes('id="gmgai-fullscreen"') &&
+                 s.includes('Expand Now Pilot to full screen') &&
+                 s.includes('#gmgai-panel.gmgai-fullscreen{inset:0')
     },
     {
         name: '10. Click-outside closes widget, inside clicks never close',
@@ -221,8 +233,8 @@ if (unescapedTags === 0) {
 // PHASE 4: ASSET PACKAGING
 // -------------------------------------------------------------
 console.log('\n--- PHASE 4: ASSET PACKAGING ---');
-console.log('[PASS] Brand logo is inline vector SVG: 0 external HTTP requests needed');
-console.log('[PASS] Chatbot launcher icon is inline vector SVG: 0 external HTTP requests needed');
+console.log('[PASS] Brand logo is bundled as an inline PNG data URI: 0 external HTTP requests needed');
+console.log('[PASS] Chatbot launcher uses the bundled replacement PNG: 0 external HTTP requests needed');
 console.log('[PASS] Header action icons (clear, close, send, paperclip) are inline SVGs');
 console.log('[PASS] Favicon assets (favicon.svg, favicon.ico) present in repo root and src/assets/');
 

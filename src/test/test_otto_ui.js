@@ -44,12 +44,12 @@ test('2. Typography: Inter system font stack and accessible sizes', () => {
     assert(uiScript.includes('-webkit-font-smoothing:antialiased'), 'Crisp font smoothing enabled');
 });
 
-// 3. Logo & SVG Assets
-test('3. Logo & Assets: Clean white & navy inline vector badges', () => {
-    assert(uiScript.includes("var LOGO_SVG = '<svg"), 'Inline vector header logo defined');
-    assert(uiScript.includes("fill=\"#FFFFFF\""), 'Logo has crisp white background');
-    assert(uiScript.includes("fill=\"#63E052\""), 'Logo contains Otto green wing mark');
-    assert(uiScript.includes("var BTN_LOGO_SVG = '<svg"), 'Inline vector launcher logo defined');
+// 3. Logo & PNG Assets
+test('3. Logo & Assets: User-provided mark is bundled for the panel and launcher', () => {
+    assert(uiScript.includes('var LOGO_IMG_URI = \'data:image/png;base64,'), 'Bundled logo image is available offline');
+    assert(uiScript.includes('var LOGO_SVG = \'<img src="\' + LOGO_IMG_URI'), 'Panel uses the replacement logo');
+    assert(uiScript.includes('var BTN_LOGO_SVG = \'<img src="\' + LOGO_IMG_URI'), 'Launcher uses the replacement logo');
+    assert(fs.existsSync('src/assets/now_pilot_logo.png'), 'Replacement logo asset exists in src/assets/');
     assert(fs.existsSync('src/assets/favicon.svg'), 'favicon.svg exists in src/assets/');
     assert(fs.existsSync('src/assets/favicon.ico'), 'favicon.ico exists in src/assets/');
     assert(fs.existsSync('src/assets/favicon-32x32.png'), 'favicon-32x32.png exists in src/assets/');
@@ -65,10 +65,24 @@ test('4. Header Redesign: Brand title, subtitle, model picker, clear, and close 
     assert(uiScript.includes('id="gmgai-close"'), 'Close button present');
     assert(uiScript.includes('aria-label="Close Now Pilot"'), 'Accessible label on close button');
     assert(uiScript.includes('title="Close Now Pilot"'), 'Tooltip on close button');
+    assert(uiScript.includes('id="gmgai-fullscreen"'), 'Fullscreen toggle present beside close control');
+    assert(uiScript.includes('Expand Now Pilot to full screen'), 'Fullscreen toggle has an accessible label');
+    assert(uiScript.includes('Restore Now Pilot size'), 'Restore toggle has an accessible label');
+    assert(uiScript.includes('#gmgai-panel.gmgai-fullscreen{inset:0'), 'Fullscreen state fills the viewport');
+    assert(uiScript.includes('curr.fullscreen = !curr.fullscreen'), 'Fullscreen toggle switches between expanded and restored states');
+});
+
+test('5. Model picker: Provider and model appear together on one line', () => {
+    assert(uiScript.includes("function modelLabel(model)"), 'Model option label helper is present');
+    assert(uiScript.includes("esc(model) + '</span></span>'"), 'Escaped model ID follows the provider on the same row');
+    assert(uiScript.includes("'<span style=\"color:#94A3B8;flex:0 0 auto\">:</span>'"), 'Provider/model separator is a colon');
+    assert(uiScript.includes('modelLabel(md.id || md.name)'), 'Detailed model options use the combined label');
+    assert(uiScript.includes('modelLabel(m)'), 'Fallback model options use the combined label');
+    assert(!uiScript.includes("out += '<div class=\"gmgai-model-group-head\"><span>'"), 'Separate provider headers are removed');
 });
 
 // 5. Navigation Tabs
-test('5. Navigation Tabs: All 4 tabs present with green active indicator', () => {
+test('6. Navigation Tabs: All 4 tabs present with green active indicator', () => {
     assert(uiScript.includes('id="gmgai-tab-chat"'), 'Chat tab present');
     assert(uiScript.includes('id="gmgai-tab-itsm"'), 'ITSM Intelligence tab present');
     assert(uiScript.includes('id="gmgai-tab-dev"'), 'Dev Assistant tab present');
@@ -78,7 +92,7 @@ test('5. Navigation Tabs: All 4 tabs present with green active indicator', () =>
 });
 
 // 6. Click-Outside & Inside-Click Containment
-test('6. Event Handling: Internal clicks contained, outside clicks close cleanly', () => {
+test('7. Event Handling: Internal clicks contained, outside clicks close cleanly', () => {
     assert(uiScript.includes('panelEl.onclick = function(e) {'), 'Internal clicks have dedicated click containment handler');
     assert(uiScript.includes('e.stopPropagation();'), 'StopPropagation used on panel clicks');
     assert(uiScript.includes('top.__gmgaiDocClick'), 'Document click handler registered on top window');
@@ -89,7 +103,7 @@ test('6. Event Handling: Internal clicks contained, outside clicks close cleanly
 });
 
 // 7. Update Set Packaging
-test('7. Packaging: Double-escaping in XML update sets', () => {
+test('8. Packaging: Double-escaping in XML update sets', () => {
     const globalXml = fs.readFileSync('update_sets/now_pilot_global.xml', 'utf8');
     assert(globalXml.includes('&amp;lt;svg'), 'SVG tag is double-escaped in global XML');
     assert(globalXml.includes('--np-background:#EEECE8'), 'Otto design tokens packaged in global XML');

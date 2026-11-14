@@ -5,6 +5,7 @@ const testSuites = [
     { file: 'src/test/test_otto_ui.js', name: 'Otto UI Redesign' },
     { file: 'src/test/test_production_readiness.js', name: 'Production Readiness' },
     { file: 'src/test/test_dev_assistant.js', name: 'Dev Assistant' },
+    { file: 'src/test/test_laptop_catalog_build.js', name: 'Laptop Catalog Design Prototype' },
     { file: 'src/test/test_itsm_intelligence.js', name: 'ITSM Intelligence' },
     { file: 'src/test/test_omniroute.js', name: 'Cloud Gateway Multi-Model' },
     { file: 'src/test/test_workflow_automation.js', name: 'Workflow Automation' },

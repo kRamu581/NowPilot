@@ -29,7 +29,7 @@ AgentCore.settings = function(getProp) {
 AgentCore.DATA_TOOLS = [
     'query_records', 'get_record', 'find_similar_incidents', 'get_journal', 'list_fields', 'get_catalog_item',
     'search_similar_incidents', 'search_knowledge_articles', 'recommend_resolution', 'summarize_incident', 'prepare_knowledge_draft',
-    'validate_dev_code', 'review_dev_artifact'
+    'validate_dev_code', 'review_dev_artifact', 'draft_laptop_catalog_build'
 ];
 AgentCore.extCall = function(hook, args) { return typeof GMGExtensions == 'undefined' ? [] : GMGExtensions.call(hook, args); };
 AgentCore.selectToolSet = function(message, page, prevSet, enabled) {
@@ -309,7 +309,8 @@ AgentCore.prototype = {
             'Data tools (query_records, get_record, find_similar_incidents) are READ-ONLY and run with the user\'s own permissions. You cannot change incidents, problems, changes, CIs or other data.'
         ].concat(F.after_data, [
             'Record tools: get_journal (READ-ONLY) reads a task record and its work notes / comments; use it to summarize and never write when the user only asks for a summary.',
-            'Metadata tools: list_fields and get_catalog_item are READ-ONLY.'
+            'Metadata tools: list_fields and get_catalog_item are READ-ONLY.',
+            'The draft_laptop_catalog_build tool is a design-only laptop catalog/approval/fulfillment blueprint. It never writes records or creates or activates a flow.'
         ], F.before_prefer, [
             'Prefer calling a tool over guessing. Never invent record numbers, sys_ids, or field values. Be concise; use short lists or tables.'
         ], F.end);
@@ -1042,5 +1043,6 @@ AgentCore.emptyFallback = function(round, lastTool) {
 AgentCore.STEER_CREATE = 'Plan & Create isn\'t enabled here, but if you create the <thing> yourself or open an existing one, I can help you work on it there.';
 AgentCore.STEER_DELETE = 'Deleting records isn\'t available here. If you open the record, I can help you change it, for example by setting its state or adding a work note.';
 AgentCore.CORE_LIMITS = 'Edition: Now Pilot (open source, based on GMG AI Agent). Creating new records, deleting records, and changing any record other than the open one are not available here (GMG Plan & Create is not enabled). ' +
-    'Make no card for any of those. Use this steer for ANYTHING GMG Plan & Create would do: any request to create or build something new, of any record type or artifact. ' +
+    'The only build-planning exception is draft_laptop_catalog_build, which returns a non-applying design blueprint and never creates a card or writes or publishes any artifact. ' +
+    'Make no change card for any request to create or build something new. Use this steer for all unsupported build requests: ' +
     'Answer a delete request with: "' + AgentCore.STEER_DELETE + '" For a change to another record, ask them to open that record.';

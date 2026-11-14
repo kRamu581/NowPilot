@@ -236,14 +236,53 @@ global.sn_ws = {
             }
 
             let promptText = '';
+            let requestBody = {};
             try {
-                const b = JSON.parse(this.body || '{}');
-                const lastMsg = (b.messages || []).slice().reverse().find(m => m.role === 'user');
+                requestBody = JSON.parse(this.body || '{}');
+                const lastMsg = (requestBody.messages || []).slice().reverse().find(m => m.role === 'user');
                 if (lastMsg) promptText = String(lastMsg.content || '').toLowerCase();
             } catch (e) {}
 
             var reply = '';
-            if (promptText.indexOf('summar') >= 0 || promptText.indexOf('inc0000060') >= 0 || promptText.indexOf('similar') >= 0 || promptText.indexOf('incident') >= 0) {
+            const laptopTool = (requestBody.tools || []).some(t => t.function && t.function.name === 'draft_laptop_catalog_build');
+            const laptopToolResult = (requestBody.messages || []).slice().reverse().find(m => {
+                if (m.role !== 'tool') return false;
+                try { return JSON.parse(m.content || '{}').type === 'laptop_catalog_flow_blueprint'; } catch (e) { return false; }
+            });
+            if (laptopTool && laptopToolResult) {
+                const blueprint = JSON.parse(laptopToolResult.content);
+                const financeStep = blueprint.flow.steps.find(s => s.type === 'Conditional IT Finance CAB Approval');
+                const taskStep = blueprint.flow.steps.find(s => s.type === 'Create Catalog Task');
+                reply = 'Laptop request blueprint (design only; nothing was created or activated):\n\n' +
+                    '- Catalog item: ' + blueprint.catalog_item.name + '\n' +
+                    '- Variables: ' + blueprint.catalog_item.variables.map(v => v.name).join(', ') + '\n' +
+                    '- Approvals: manager approval, then IT Finance CAB when ' + (financeStep.required_when || 'the spend condition is configured') + '\n' +
+                    '- Fulfillment: create a catalog task assigned to ' + taskStep.assignment_group + ' after approvals\n\n' +
+                    'Still to configure: ' + blueprint.decision_points.join(' ');
+            } else if (laptopTool && /laptop|computer|catalog item/.test(promptText)) {
+                const toolCall = {
+                    id: 'call_local_laptop_blueprint',
+                    type: 'function',
+                    function: {
+                        name: 'draft_laptop_catalog_build',
+                        arguments: JSON.stringify({
+                            catalog_item_name: 'Laptop Request',
+                            finance_condition: 'request exceeds the approved spend threshold',
+                            hardware_assignment_group: 'Hardware'
+                        })
+                    }
+                };
+                return {
+                    getStatusCode: () => 200,
+                    getBody: () => JSON.stringify({
+                        choices: [{message: {content: '', role: 'assistant', tool_calls: [toolCall]}, finish_reason: 'tool_calls'}],
+                        usage: {prompt_tokens: 140, completion_tokens: 85, total_tokens: 225}
+                    }),
+                    getHeader: () => null,
+                    haveError: () => false,
+                    getErrorMessage: () => ''
+                };
+            } else if (promptText.indexOf('summar') >= 0 || promptText.indexOf('inc0000060') >= 0 || promptText.indexOf('similar') >= 0 || promptText.indexOf('incident') >= 0) {
                 reply = '### Incident Investigation (INC0000060)\n\n' +
                         '**Symptoms:** 25% packet loss and latency spikes on Dallas core switch (`sw-dal-core-01`).\n\n' +
                         '**Historical Correlation:**\n' +
@@ -389,7 +428,7 @@ const server = http.createServer((req, res) => {
             type: 'openai_compatible',
             model: 'gemini-2.0-flash',
             key_present: true,
-            tools: ['get_record', 'query_records', 'search_similar_incidents', 'search_knowledge_articles', 'recommend_resolution', 'validate_dev_code', 'review_dev_artifact']
+            tools: ['get_record', 'query_records', 'search_similar_incidents', 'search_knowledge_articles', 'recommend_resolution', 'validate_dev_code', 'review_dev_artifact', 'draft_laptop_catalog_build']
         }));
     }
 
@@ -655,6 +694,25 @@ const server = http.createServer((req, res) => {
 </body>
 </html>`;
     return res.end(html);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[UNCAUGHT EXCEPTION]', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[UNHANDLED REJECTION]', reason);
+});
+
+server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+        console.log(`Port ${PORT} in use, retrying in 2 seconds...`);
+        setTimeout(() => {
+            try { server.close(); } catch (_) {}
+            server.listen(PORT);
+        }, 2000);
+    } else {
+        console.error('[SERVER ERROR]', e);
+    }
 });
 
 server.listen(PORT, () => {

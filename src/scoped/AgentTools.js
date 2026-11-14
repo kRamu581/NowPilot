@@ -110,7 +110,14 @@ AgentTools.prototype = {
              parameters: {type: 'object', properties: {
                  code: {type: 'string', description: 'JavaScript code to refactor'},
                  artifact_type: {type: 'string', description: 'Artifact type, e.g. business_rule, client_script'}
-             }, required: ['code']}}
+             }, required: ['code']}},
+            {name: 'draft_laptop_catalog_build',
+             description: 'Create a design-only blueprint for a laptop Service Catalog item with manager approval, conditional IT Finance CAB approval, and Hardware task fulfillment. Does not create or update ServiceNow records, write flows, or publish anything.',
+             parameters: {type: 'object', properties: {
+                 catalog_item_name: {type: 'string', description: 'Optional catalog item name; defaults to Laptop Request.'},
+                 finance_condition: {type: 'string', description: 'Optional approved condition for when IT Finance CAB approval is required. If omitted, the condition remains unresolved.'},
+                 hardware_assignment_group: {type: 'string', description: 'Optional assignment group display name; defaults to Hardware and is not verified against the instance.'}
+             }}}
         ];
     },
 
@@ -125,6 +132,7 @@ AgentTools.prototype = {
             if (name == 'recommend_resolution') return this.recommendResolution(args);
             if (name == 'summarize_incident') return this.summarizeIncident(args);
             if (name == 'prepare_knowledge_draft') return this.prepareKnowledgeDraft(args);
+            if (name == 'draft_laptop_catalog_build') return this.draftLaptopCatalogBuild(args);
             if (name == 'validate_dev_code') {
                 if (typeof DevValidator == 'undefined') return {error: 'DevValidator not installed.'};
                 return new DevValidator().validate(args.code || '', args.artifact_type || 'business_rule');
@@ -155,6 +163,59 @@ AgentTools.prototype = {
         } catch (e) {
             return AgentTools.toolError(name, e);
         }
+    },
+
+    draftLaptopCatalogBuild: function(a) {
+        a = a || {};
+        function text(value, fallback, max, label) {
+            if (value != null && typeof value != 'string') throw label + ' must be text.';
+            var result = value == null || String(value).trim() === '' ? fallback : String(value).trim();
+            if (result.length > max) throw label + ' must be ' + max + ' characters or fewer.';
+            if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(result)) throw label + ' contains unsupported control characters.';
+            return result;
+        }
+
+        var itemName = text(a.catalog_item_name, 'Laptop Request', 100, 'Catalog item name');
+        var financeCondition = text(a.finance_condition, '', 500, 'Finance condition');
+        var assignmentGroup = text(a.hardware_assignment_group, 'Hardware', 120, 'Hardware assignment group');
+        var configuredFinanceRule = financeCondition !== '';
+
+        return {
+            type: 'laptop_catalog_flow_blueprint',
+            status: 'design_only',
+            apply_supported: false,
+            persisted: false,
+            instance_writes: false,
+            execution_ready: false,
+            catalog_item: {
+                name: itemName,
+                table: 'sc_cat_item',
+                active: false,
+                variables: [
+                    {name: 'requested_for', type: 'reference', reference: 'sys_user', mandatory: true},
+                    {name: 'laptop_model', type: 'choice', mandatory: true, options_source: 'Approved laptop inventory; configure for the target instance.'},
+                    {name: 'business_justification', type: 'multi_line_text', mandatory: true},
+                    {name: 'needed_by', type: 'date', mandatory: false}
+                ]
+            },
+            flow: {
+                name: itemName + ' approvals and hardware fulfillment',
+                trigger: {type: 'Service Catalog', item: itemName},
+                steps: [
+                    {type: 'Get Catalog Variables', variables: ['requested_for', 'laptop_model', 'business_justification', 'needed_by']},
+                    {type: 'Manager Approval', approver: 'Manager of requested_for', required: true, on_rejection: 'Stop fulfillment and mark the request rejected.'},
+                    {type: 'Conditional IT Finance CAB Approval', required_when: configuredFinanceRule ? financeCondition : null, configuration_required: !configuredFinanceRule, approver_group: 'IT Finance CAB', on_rejection: 'Stop fulfillment and mark the request rejected.'},
+                    {type: 'Create Catalog Task', assignment_group: assignmentGroup, task: 'Review and fulfill the laptop request.', after_approvals: true},
+                    {type: 'Wait for Catalog Task', completion: 'Complete the request after the Hardware task is closed.'}
+                ]
+            },
+            decision_points: [
+                configuredFinanceRule ? null : 'Define the approved condition or spend threshold that triggers IT Finance CAB approval.',
+                'Confirm the target instance has an active Hardware assignment group and an IT Finance CAB approver group.',
+                'Populate laptop_model choices from the approved device inventory.'
+            ].filter(function(item) { return item !== null; }),
+            implementation_notice: 'This is a local design proposal only. No ServiceNow records or Flow Designer artifacts were created, saved, or activated. Flow Designer serialization, instance references, ACLs, and runtime behavior require validation in a ServiceNow development instance.'
+        };
     },
 
     _checkTable: function(t) {
