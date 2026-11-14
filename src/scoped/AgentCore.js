@@ -171,17 +171,33 @@ AgentCore.prototype = {
                     ? LLMAdapter.getModelsForProvider(pType, pName)
                     : [];
 
-                var models = [defaultModel];
+                // Only expose the models that are actually configured/approved for this provider.
+                // The panel should not show the entire catalog for every active provider.
+                var models = [];
                 var modelDetails = [];
 
+                if (defaultModel) models.push(defaultModel);
+
                 if (allowlist && allowlist.length) {
-                    models = allowlist.slice();
-                    if (defaultModel && models.indexOf(defaultModel) < 0) models.unshift(defaultModel);
-                } else if (catalogModels.length) {
+                    allowlist.forEach(function(modelId) {
+                        if (!modelId || models.indexOf(modelId) >= 0) return;
+                        if (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.isModelAllowedForProvider == 'function') {
+                            var provIdent = (pName && pName !== 'openai_compatible') ? pName : pType;
+                            if (!LLMAdapter.isModelAllowedForProvider(modelId, provIdent, defaultModel)) return;
+                        }
+                        models.push(modelId);
+                    });
+                } else if (catalogModels.length && defaultModel) {
+                    // Preserve the provider default even when the catalog is available,
+                    // but never explode the UI with every model from the global catalog.
                     catalogModels.forEach(function(cm) {
-                        if (models.indexOf(cm.id) < 0) models.push(cm.id);
+                        if (cm && cm.id && models.indexOf(cm.id) < 0 && String(cm.id) === String(defaultModel)) {
+                            models.push(cm.id);
+                        }
                     });
                 }
+
+                if (!models.length && defaultModel) models.push(defaultModel);
 
                 models.forEach(function(mId) {
                     var info = (typeof LLMAdapter != 'undefined' && typeof LLMAdapter.getModelInfo == 'function') ? LLMAdapter.getModelInfo(mId) : null;

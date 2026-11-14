@@ -795,21 +795,15 @@
         out += '<button type="button" class="gmgai-model-item' + (cur === 'default' || !cur ? ' gmgai-active' : '') + '" data-val="default"><span>Default Model</span>' + (cur === 'default' || !cur ? '<span>✓</span>' : '') + '</button>';
         
         (top.__gmgaiProviders || []).forEach(function(p) {
-            out += '<div class="gmgai-model-group-head"><span>' + esc(p.name || 'Provider') + '</span><span style="font-size:9px;color:#94A3B8">' + esc(p.type || '') + '</span></div>';
+            out += '<div class="gmgai-model-group-head"><span>' + esc(p.name || 'Provider') + '</span></div>';
             var details = (p.model_details && p.model_details.length) ? p.model_details : null;
             if (details) {
                 details.forEach(function(md) {
                     var val = p.sys_id + ':' + md.id;
                     var isSel = (cur === val || (cur === p.sys_id && md.id === p.model));
-                    var badges = '';
-                    if (md.supports_reasoning) badges += '<span class="gmgai-model-badge gmgai-badge-reasoning" title="Reasoning">Reasoning</span>';
-                    if (md.supports_vision) badges += '<span class="gmgai-model-badge gmgai-badge-vision" title="Vision">Vision</span>';
-                    if (md.capabilities && md.capabilities.indexOf('code') >= 0 && !md.supports_reasoning) badges += '<span class="gmgai-model-badge gmgai-badge-code" title="Code">Code</span>';
-                    if (md.capabilities && md.capabilities.indexOf('fast') >= 0) badges += '<span class="gmgai-model-badge gmgai-badge-fast" title="Fast">Fast</span>';
 
                     out += '<button type="button" class="gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '" data-val="' + esc(val) + '">' +
-                           '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + esc(md.name || md.id) + '</span>' +
-                           '<div class="gmgai-model-badges">' + badges + '</div>' +
+                           '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(md.name || md.id) + '</span>' +
                            (isSel ? '<span>✓</span>' : '') +
                            '</button>';
                 });

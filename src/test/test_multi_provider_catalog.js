@@ -304,9 +304,11 @@ it('AgentCore.listProviders populates model_details with capabilities and hides 
     const p = res.providers[0];
     assert.strictEqual(p.name, 'DeepSeek Production');
     assert.strictEqual(p.provider_id, 'deepseek');
-    assert.ok(p.models.length > 1, 'Provider should contain catalog models');
-    assert.ok(p.models.includes('deepseek-reasoner'));
-    assert.ok(p.model_details.length > 1);
+    // Initially only the configured model is returned
+    assert.strictEqual(p.models.length, 1);
+    assert.strictEqual(p.models[0], 'deepseek-chat');
+    assert.strictEqual(p.model_details.length, 1);
+    assert.strictEqual(p.model_details[0].id, 'deepseek-chat');
 
     // SECURITY CHECK: Verify api_key is NEVER exposed in client output
     assert.strictEqual(p.api_key, undefined);

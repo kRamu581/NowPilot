@@ -1649,21 +1649,15 @@ GMGAIApplier.prototype = {
         out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (cur === 'default' || !cur ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;default&amp;quot;&amp;gt;&amp;lt;span&amp;gt;Default Model&amp;lt;/span&amp;gt;' + (cur === 'default' || !cur ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') + '&amp;lt;/button&amp;gt;';
         
         (top.__gmgaiProviders || []).forEach(function(p) {
-            out += '&amp;lt;div class=&amp;quot;gmgai-model-group-head&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name || 'Provider') + '&amp;lt;/span&amp;gt;&amp;lt;span style=&amp;quot;font-size:9px;color:#94A3B8&amp;quot;&amp;gt;' + esc(p.type || '') + '&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;';
+            out += '&amp;lt;div class=&amp;quot;gmgai-model-group-head&amp;quot;&amp;gt;&amp;lt;span&amp;gt;' + esc(p.name || 'Provider') + '&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;';
             var details = (p.model_details &amp;amp;&amp;amp; p.model_details.length) ? p.model_details : null;
             if (details) {
                 details.forEach(function(md) {
                     var val = p.sys_id + ':' + md.id;
                     var isSel = (cur === val || (cur === p.sys_id &amp;amp;&amp;amp; md.id === p.model));
-                    var badges = '';
-                    if (md.supports_reasoning) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-reasoning&amp;quot; title=&amp;quot;Reasoning&amp;quot;&amp;gt;Reasoning&amp;lt;/span&amp;gt;';
-                    if (md.supports_vision) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-vision&amp;quot; title=&amp;quot;Vision&amp;quot;&amp;gt;Vision&amp;lt;/span&amp;gt;';
-                    if (md.capabilities &amp;amp;&amp;amp; md.capabilities.indexOf('code') &amp;gt;= 0 &amp;amp;&amp;amp; !md.supports_reasoning) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-code&amp;quot; title=&amp;quot;Code&amp;quot;&amp;gt;Code&amp;lt;/span&amp;gt;';
-                    if (md.capabilities &amp;amp;&amp;amp; md.capabilities.indexOf('fast') &amp;gt;= 0) badges += '&amp;lt;span class=&amp;quot;gmgai-model-badge gmgai-badge-fast&amp;quot; title=&amp;quot;Fast&amp;quot;&amp;gt;Fast&amp;lt;/span&amp;gt;';
 
                     out += '&amp;lt;button type=&amp;quot;button&amp;quot; class=&amp;quot;gmgai-model-item' + (isSel ? ' gmgai-active' : '') + '&amp;quot; data-val=&amp;quot;' + esc(val) + '&amp;quot;&amp;gt;' +
-                           '&amp;lt;span style=&amp;quot;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px&amp;quot;&amp;gt;' + esc(md.name || md.id) + '&amp;lt;/span&amp;gt;' +
-                           '&amp;lt;div class=&amp;quot;gmgai-model-badges&amp;quot;&amp;gt;' + badges + '&amp;lt;/div&amp;gt;' +
+                           '&amp;lt;span style=&amp;quot;white-space:nowrap;overflow:hidden;text-overflow:ellipsis&amp;quot;&amp;gt;' + esc(md.name || md.id) + '&amp;lt;/span&amp;gt;' +
                            (isSel ? '&amp;lt;span&amp;gt;✓&amp;lt;/span&amp;gt;' : '') +
                            '&amp;lt;/button&amp;gt;';
                 });

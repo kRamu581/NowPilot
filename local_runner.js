@@ -23,7 +23,7 @@ const mockState = {
     currentUserId: '6816f79cc0a8016401c5a33be04be441',
     roles: ['x_gmg_ai.user', 'admin'],
     properties: {
-        'x_gmg_ai.model_allowlist': 'claude-3-5-sonnet-20241022,gpt-4o,omniroute/gpt-4o-mini',
+        'x_gmg_ai.model_allowlist': '',
         'x_gmg_ai.time_budget_ms': '30000',
         'instance_name': 'dev_instance_local',
         'x_gmg_ai.allow_http_localhost': 'true',
@@ -32,17 +32,17 @@ const mockState = {
     tables: {
         x_gmg_ai_provider: [
             {
-                sys_id: 'd890040e97120210e304b998c253af30',
-                name: 'OmniRoute Gateway',
-                type: 'omniroute',
-                model: 'omniroute/gpt-4o-mini',
+                sys_id: 'prov_google_gemini_01',
+                name: 'Google Gemini',
+                type: 'openai_compatible',
+                model: 'gemini-2.0-flash',
                 active: '1',
                 is_default: '1',
-                base_url: 'http://127.0.0.1:20128/v1',
-                api_url: 'http://127.0.0.1:20128/v1',
-                price_input: '0.15',
-                price_output: '0.60',
-                api_key: { getDecryptedValue: () => 'sk-omni-test' }
+                base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
+                api_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
+                price_input: '0.10',
+                price_output: '0.40',
+                api_key: { getDecryptedValue: () => 'AIzaSyDemoGoogleKey' }
             }
         ],
         x_gmg_ai_pending_action: [],
@@ -228,7 +228,7 @@ global.sn_ws = {
             if (this.endpoint.endsWith('/models')) {
                 return {
                     getStatusCode: () => 200,
-                    getBody: () => JSON.stringify({ data: [{ id: 'omniroute/gpt-4o-mini' }, { id: 'gpt-4o' }] }),
+                    getBody: () => JSON.stringify({ data: [{ id: 'gemini-2.0-flash' }, { id: 'deepseek-chat' }] }),
                     getHeader: () => null,
                     haveError: () => false,
                     getErrorMessage: () => ''
@@ -385,9 +385,9 @@ const server = http.createServer((req, res) => {
         }
         return res.end(JSON.stringify({
             user: 'admin',
-            provider: 'OmniRoute Gateway',
-            type: 'omniroute',
-            model: 'omniroute/gpt-4o-mini',
+            provider: 'Google Gemini',
+            type: 'openai_compatible',
+            model: 'gemini-2.0-flash',
             key_present: true,
             tools: ['get_record', 'query_records', 'search_similar_incidents', 'search_knowledge_articles', 'recommend_resolution', 'validate_dev_code', 'review_dev_artifact']
         }));

@@ -2,7 +2,7 @@
 <!-- Copyright 2026 GMG Technology LLC -->
 # GMG AI Agent for ServiceNow (open source): features
 
-Describes the update sets built for v1.5.0 (with Production Readiness, Observability & End-to-End Validation, Agentic Workflow Automation, ITSM Intelligence & RAG, Advanced ServiceNow Development Assistant, and OmniRoute gateway upgrades).
+Describes the update sets built for v2.0.0 (with Multi-Provider Cloud Architecture, Production Readiness, Observability & End-to-End Validation, Agentic Workflow Automation, ITSM Intelligence & RAG, Advanced ServiceNow Development Assistant, and Gateway upgrades).
 
 ## Production Readiness, Observability & End-to-End Validation (v1.5.0)
 - **Centralized Diagnostics & Safe Error Classification (`DiagnosticService`)**:
@@ -61,7 +61,7 @@ Describes the update sets built for v1.5.0 (with Production Readiness, Observabi
 - **Provider Health Diagnostics & SSRF Safeguards (`rest_health.js` & `LLMAdapter`)**:
   - Rigorous endpoint validation rejecting cloud metadata (`169.254.169.254`), private IP subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and link-local ranges.
   - Localhost loopback (`127.0.0.1`) requires explicit administrative enablement via `x_gmg_ai.allow_http_localhost = true`.
-  - Administrator connectivity checks test `/models` safely for OpenAI/OmniRoute gateways; capability gracefully reported as unavailable if endpoint returns 404.
+  - Administrator connectivity checks test `/models` safely for OpenAI/Cloud gateways; capability gracefully reported as unavailable if endpoint returns 404.
   - API keys and authorization headers are never exposed in health responses or UI scripts (masked as `key_configured: true`).
 
 ## Agentic Workflow Automation & Controlled Tool Execution (v1.4.0)
@@ -193,10 +193,10 @@ Describes the update sets built for v1.5.0 (with Production Readiness, Observabi
 - **Model selector:** Authorized users can select from enabled, administrator-approved AI models or providers via an accessible dropdown in the panel header.
 - Users need the role **x_gmg_ai.user** to see the panel and the GMG AI Agent menu.
 
-## Any LLM provider & OmniRoute Gateway
-- Provider types: **omniroute**, **anthropic**, and **openai_compatible** (covers OpenAI and xAI Grok).
-- **OmniRoute AI Gateway:** Native support for OmniRoute OpenAI-compatible endpoints (`<base URL>/chat/completions`), model discovery via `GET /models`, and automatic rate limit `Retry-After` header handling.
-- Add one as an admin under **GMG AI Agent > Providers**: name, type, base URL, model, API key. For omniroute and openai_compatible the agent calls `<base URL>/chat/completions`. For anthropic a blank base URL means https://api.anthropic.com/v1.
+## Any LLM provider & Cloud AI Gateways
+- Provider types: **anthropic** and **openai_compatible** (covers Google Gemini, DeepSeek, OpenAI, Grok, Qwen, Z.ai, Meta, Mistral, NVIDIA).
+- **Cloud AI Gateways:** Native support for standard OpenAI-compatible endpoints (`<base URL>/chat/completions`), model discovery via `GET /models`, and automatic rate limit `Retry-After` header handling.
+- Add one as an admin under **GMG AI Agent > Providers**: name, type, base URL, model, API key. For openai_compatible the agent calls `<base URL>/chat/completions`. For anthropic a blank base URL means https://api.anthropic.com/v1.
 - **Model allowlist:** Optional administrator property `x_gmg_ai.model_allowlist` restricts selectable models to an approved comma-separated list.
 - **Safe automatic fallback:** If a provider encounters a retryable failure (HTTP 429 rate limit, 5xx server error, or connection timeout), the agent automatically attempts the next provider listed in `x_gmg_ai.fallback_providers` using bounded retries with exponential backoff and jitter within `x_gmg_ai.time_budget_ms`. Non-retryable errors (e.g., 401/403 authentication, 400 bad request) abort immediately with clear diagnostics.
 - **SSRF protection:** Configurable endpoints are validated server-side. Remote endpoints must use HTTPS. Insecure HTTP is rejected, and cloud metadata services (e.g. 169.254.169.254) are strictly blocked. Local HTTP loopback (127.0.0.1 / localhost) is disabled by default and allowed only when `x_gmg_ai.allow_http_localhost` is explicitly set to true.

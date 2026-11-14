@@ -201,7 +201,10 @@ LLMAdapter.isModelAllowedForProvider = function(modelId, providerTypeOrName, pro
 
     if (providerTypeOrName) {
         var pid = LLMAdapter.normalizeProviderId(providerTypeOrName);
-        if (pid && pid !== 'openai_compatible') {
+        if (pid) {
+            if (pid === 'openai_compatible') {
+                return info.provider !== 'anthropic';
+            }
             return info.provider === pid;
         }
     }
